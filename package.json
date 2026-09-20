@@ -1,0 +1,13 @@
+{
+  "name": "transflow-tms-root",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TransFlow TMS - Unified Transportation Management & Governance System",
+  "scripts": {
+    "dev": "npm --prefix TMS run dev",
+    "frontend": "npm --prefix TMS run dev",
+    "backend": "cd tms-backend && ..\\tools\\apache-maven-3.9.6\\bin\\mvn.cmd spring-boot:run",
+    "start": "npm --prefix TMS run dev",
+    "test:e2e": "python test_e2e.py"
+  }
+}

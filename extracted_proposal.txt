@@ -1,0 +1,1346 @@
+
+MANAGEMENT PROPOSAL
+Transport Management,Accounts & Business Intelligence Web System
+A structured web platform to replace the current multi-Excel transportation workflow
+
+	
+Area	
+Proposal
+	
+Business context	
+Transportation / tipper operations, customer loads, driver accounts and financial management
+	
+Location	
+Ramanathapuram / Ramnad operations
+	
+Users	
+Admin, MD, Assistant Managers, Accounts, Operations Managers and Workers
+	
+Evidence reviewed	
+Daily tipper, diesel, accounts, driver accounts, customer statements, boulder/load samples
+	
+Target	
+One connected database + role-based portals + invoices + audit + Excel/PDF reporting
+
+	
+Core management principleDo not build separate digital copies of each Excel sheet. Build one connected business database. Excel becomes an import/export format; the database becomes the source of truth.
+
+Prepared for Management Review • 05 September 2026
+
+Contents
+1. Executive Summary
+2. Current-State Analysis
+3. Business Problems
+4. Proposed System Vision
+5. Core Connected-Data Principle
+6. User Roles and Portals
+7. Separate Admin Control Center
+8. MD / Owner Portal
+9. Assistant Manager Portal
+10. Accounts Portal
+11. Operations / Worker Portal
+12. Master Data
+13. Daily Trip / Tipper Module
+14. Customer Management
+15. Invoice Generation
+16. Driver Accounts
+17. Diesel Management
+18. Vehicle & Maintenance
+19. Crusher / Source Management
+20. Cash, Bank & Online Accounts
+21. Central Financial Ledger & Delayed Payments
+22. Expense & Payment Management
+23. Reporting / Excel / PDF / Printing
+24. Dashboards & KPIs
+25. Approval, Audit & Security
+26. Excel Import & Historical Migration
+27. Technical Architecture
+28. End-to-End Workflows
+29. Development Roadmap
+30. Testing & Acceptance
+31. Future AI
+32. Risks & Recommendations
+33. Management Decision & Next Steps
+Appendix A: Sample Data Mapping
+Appendix B: Permission Matrix
+
+1. Executive Summary
+The supplied Excel samples show a real transportation operation already capturing substantial data: daily vehicle/load activity, customer billing, diesel, driver advances and expenses, source/crusher movement, cash accounts and online/bank accounts. The primary issue is not lack of data; it is that the data is distributed across different workbooks, formulas and free-text descriptions.
+The proposed system is a secure web application with a central relational database. Every trip, invoice, payment, expense and operational event receives a permanent ID. Customers, vehicles, drivers, sources, trips and financial transactions are linked. A trip entered today can therefore remain unpaid until three days later without losing its connection to the customer account or invoice.
+Centralize operations. Replace disconnected operational spreadsheets with structured forms and one database.
+Connect operations and accounts. A trip can create a receivable; a later payment can be allocated to that trip/invoice.
+Separate dates. Work date, invoice date, payment date and expense date remain distinct.
+Control access. Admin creates users and grants detailed permissions.
+Generate documents. Invoices, statements and reports can be printed or exported to PDF/Excel.
+Improve management visibility. MD and managers get dashboards and drill-down reporting.
+Preserve Excel familiarity. Historical workbooks can be imported and future reports can be exported to Excel.
+	
+Recommended end stateOne secure system • One central database • Separate portals • Permanent transaction IDs • Phone-first customer matching • Connected invoices and delayed payments • Driver and vehicle ledgers • Cash/bank accounting • Admin-controlled permissions • Complete audit trail • Excel/PDF reporting.
+
+2. Current-State Analysis
+The following observations are based on the supplied sample files. Exact business rules should be confirmed with management before production implementation.
+	
+Sample	
+Observed purpose	
+Key fields/patterns	
+Proposed module
+	
+DAILY TIPPER WORK	
+Daily fleet/load operations	
+Date, status, vehicle, bill, driver, crusher, customer, delivery, material, load ton, rate, mine pass, load/unload quantities, customer amount, receipt, KM, vehicle balance	
+Trips / Operations
+	
+DAILY DIESEL ENTRY	
+Fuel tracking	
+Date, vehicle, driver, fuel station, bill, litres, rate, start/end KM, KM, mileage, amount	
+Diesel + Vehicle Cost + Accounts
+	
+DAILY ACCOUNTS WORK	
+Cash and online/bank ledgers	
+Date, description, credit, debit, balance, transfers, advances, receipts and payments	
+Central Finance
+	
+Driver account samples	
+Driver-side ledger	
+Driver advances, credit/debit, crusher/source amounts, toll/other entries, load/diesel sheets	
+Driver Ledger
+	
+K Engineering statement	
+Customer receivable	
+Date, vehicle, material, place, quantity, amount, GST, total, received, balance	
+Customer Ledger + Invoice
+	
+DBL Rent statement	
+Rental/load movement	
+Date, vehicle, material, quantity, load place, unload place, one-side KM	
+Rental/Load Statement
+	
+BOLDERS sample	
+Source-to-customer movement	
+Source invoice, loaded ton, unload customer, unload bill, unload ton, shortage, KM, transport rent, customer amount	
+Source/Trip chain
+
+The current data also contains inconsistent capitalization, spelling and terminology; for example MATERIAL/METRIAL, CRASSER/CRUSHER, and different customer/driver naming styles. The web system should normalize these through master data while preserving original bill and document references.
+Observed sample scale
+Daily tipper workbook contains approximately 298 data rows in the reviewed sample period, spanning 22 distinct vehicle strings, 38 customer-name strings and 21 driver-name strings before normalization.
+The K Engineering sample shows a customer statement pattern with ₹13,55,000 billed, ₹10,80,000 received and ₹2,75,000 balance.
+The diesel samples demonstrate litre × rate calculations and KM/mileage calculations, including incomplete/cancelled records that need validation controls.
+Account descriptions combine structured information such as vehicle number, driver name, payment type and bank account into free text; the new system should capture these as separate fields.
+3. Business Problems the System Solves
+	
+Problem	
+Business impact
+	
+Repeated data entry	
+Same customer/vehicle/driver/amount appears in multiple sheets and can diverge.
+	
+Delayed customer payments	
+Trip date and payment date are different; manual sheets make allocation difficult.
+	
+Manual running balances	
+Customer, driver and cash balances depend on formulas and correct row order.
+	
+Free-text financial entries	
+Descriptions are difficult to analyze, filter and reconcile.
+	
+Limited access control	
+Excel does not provide reliable role-based module permissions.
+	
+Weak auditability	
+Cell edits do not provide a business-level before/after history.
+	
+Manual reporting	
+Daily/monthly reports require copying, filtering and formula work.
+	
+Inconsistent masters	
+Customer, driver, material and source names may be typed differently.
+	
+Concurrent users	
+Multiple users can create conflicting versions of the same spreadsheet.
+	
+Hidden business formulas	
+Important cost logic can be buried inside Excel formulas.
+
+4. Proposed System Vision
+                     TRANSPORT MANAGEMENT WEB SYSTEM                                  │              ┌───────────────────┴───────────────────┐              │                                       │        SEPARATE ADMIN                         ROLE-BASED PORTALS              │                         ┌──────────────┼──────────────┐       Users • Permissions              MD       MANAGERS       ACCOUNTS/WORKERS       Audit • Settings                         │              └───────────────────────┬─────────┴──────────────────────┘                                      │                              CENTRAL DATABASE                                      │      ┌─────────────┬─────────────┬────────────┬─────────────┐      │             │             │            │             │    TRIPS       CUSTOMERS      DRIVERS      VEHICLES      FINANCE      │             │             │            │             │      └─────────────┴─────────────┴────────────┴─────────────┘                                      │                       INVOICES • REPORTS • EXPORTS
+
+The system should make correct data entry easier than Excel: controlled dropdowns, phone-first customer search, automatic calculations, validation, approvals and automatic ledger updates.
+5. Core Connected-Data Principle
+The most important architecture rule is that a business event is entered once and then reused by connected modules. Do not create separate independent records merely because the business currently uses separate spreadsheets.
+	
+Entity	
+Technical ID	
+Business identifier	
+Relationship
+	
+Customer	
+customerId	
+Phone number where applicable	
+Owns trips, invoices, receipts and balance
+	
+Vehicle	
+vehicleId	
+Registration number	
+Owns trips, diesel and maintenance history
+	
+Driver	
+driverId	
+Driver code/controlled phone	
+Owns trips, advances, expenses and settlement
+	
+Trip	
+tripId	
+System-generated Trip ID	
+Links customer, vehicle, driver, source and billable data
+	
+Invoice	
+invoiceId	
+Invoice number	
+Links billable event and customer receivable
+	
+Payment	
+paymentId	
+Payment reference	
+Links customer/driver/source and cash/bank account
+	
+Transaction	
+transactionId	
+System reference	
+Central financial event
+
+	
+Customer identity ruleCustomer name is a display/search field, not the identity key. Use a permanent internal Customer ID as the database primary key and a controlled phone number as the primary business lookup/duplicate-protection key. Support additional contact numbers for businesses that use multiple contacts.
+
+05-Sep: TRIP TRP-001 → K ENGINEERING → ₹30,000          ↓Invoice INV-001 → customer receivable ₹30,000          ↓08-Sep: Payment PAY-001 → ₹20,000 → Bank          ↓Invoice balance = ₹10,000Customer outstanding = ₹10,000Original trip date and amount remain unchanged.
+
+6. User Roles and Portals
+	
+Role	
+Purpose	
+Typical access
+	
+System Admin	
+Total system control	
+Users, permissions, masters, all modules, audit, imports, settings, controlled corrections
+	
+MD / Owner	
+Business oversight	
+All dashboards, operational and financial reports, invoices, ledgers, profitability, exports
+	
+Assistant Manager	
+Management/operations	
+Trips, vehicles, drivers, customers, diesel, maintenance, selected reports and accounts
+	
+Accounts	
+Financial operations	
+Customer receipts, driver payments, cash, bank, expenses, invoices, ledgers, financial reports
+	
+Operations Manager	
+Fleet coordination	
+Trip planning, status, vehicle/driver assignment, operational reports
+	
+Worker / Data Entry	
+Daily entry	
+Assigned trips, deliveries and operational fields; limited editing and exports
+
+7. Separate Admin Control Center
+The Admin Panel should have a dedicated login and should be treated as the governance/control center of the application. It is intentionally separate from the MD dashboard. The MD sees business performance; the Admin controls how the system operates.
+	
+Admin area	
+Capabilities
+	
+Dedicated login	
+Separate Admin email/password; individual account; secure session and password recovery
+	
+User management	
+Create, activate/deactivate, reset access, assign role and scope
+	
+Permissions	
+Grant view/create/edit/approve/export/print/admin rights per module
+	
+Master data	
+Customers, vehicles, drivers, materials, sources, locations, fuel stations, accounts and rate rules
+	
+Audit center	
+Search who created/edited/approved/archived/exported or changed permissions
+	
+System settings	
+Company details, invoice numbering, tax settings, report configuration, controlled business rules
+	
+Imports	
+Excel upload, column mapping, validation, preview, commit and import history
+	
+Exception control	
+Review cancellations, correction requests and data-quality exceptions
+
+ADMIN LOGIN   ↓USERS → ROLE → GRANULAR PERMISSIONS → OPTIONAL DATA SCOPE   ↓USER ACTIVATED   ↓EVERY FUTURE CHANGE → AUDIT LOG
+
+Admin should be able to see and manage the complete system, including the ability to inspect all users' access and all important record histories.
+8. MD / Owner Portal
+The MD portal should answer management questions without requiring the MD to open multiple spreadsheets.
+	
+Dashboard block	
+Question answered
+	
+Today's trips	
+How many loads are completed, running, pending or cancelled?
+	
+Billing/revenue	
+How much business was billed for the selected period?
+	
+Receivables	
+How much do customers currently owe?
+	
+Cash/bank	
+What are the current balances?
+	
+Diesel	
+How much fuel was consumed and by which vehicles?
+	
+Driver advances	
+How much has been given and what remains to settle?
+	
+Maintenance	
+What has been spent and which vehicles need attention?
+	
+Vehicle utilization	
+Which vehicles are working, idle or under maintenance?
+	
+Customer performance	
+Which customers generate loads and outstanding?
+	
+Profitability	
+What is the configured contribution after selected operating costs?
+
+MD DASHBOARD↓CLICK KPI↓FILTER BY CUSTOMER / VEHICLE / DRIVER / DATE↓OPEN UNDERLYING TRIP / INVOICE / PAYMENT / EXPENSE↓VIEW COMPLETE TRANSACTION HISTORY
+
+9. Assistant Manager Portal
+View daily operations and current vehicle/trip status.
+Review driver allocation and operational progress.
+Monitor diesel and maintenance activity.
+View customer activity and outstanding information when authorized.
+Generate operational reports and authorized invoices.
+Approve operational records if assigned approval permission.
+Export authorized reports to Excel/PDF.
+10. Accounts Portal
+Accounts should enter financial events without retyping operational facts that already exist.
+	
+Function	
+Workflow
+	
+Customer receipt	
+Select customer → see open invoices → enter payment date/mode/account/reference → allocate amount → post
+	
+Driver payment	
+Select driver → select advance/earning/expense items → enter payment → post to cash/bank
+	
+Cash entry	
+Receipt/payment + category + party + reference + amount
+	
+Bank entry	
+Receipt/payment + account + party + reference + amount
+	
+Transfer	
+One transfer record linking source and destination accounts
+	
+Expense	
+Category + amount + date + optional vehicle/driver/source + receipt
+	
+Invoice	
+Generate/print/PDF and maintain payment status
+	
+Ledger	
+Chronological transactions with running balance and references
+
+11. Operations / Worker Portal
+The worker interface should be simple, fast and restrictive. Workers should see only what is required for their work.
+New Trip / Load Entry.
+Vehicle and driver selection from controlled masters.
+Customer lookup by phone first, then name.
+Source/crusher, material, loading and delivery details.
+Quantity, rate and bill information.
+Delivery status updates.
+Limited edit rights.
+Authorized print/PDF/Excel exports only.
+12. Master Data Management
+	
+Master	
+Examples	
+Purpose
+	
+Customers	
+ID, phone, name, contacts, address, GSTIN, credit terms	
+Unique customer identity and receivables
+	
+Vehicles	
+Registration, type, status, current KM	
+Trips, diesel, maintenance, utilization
+	
+Drivers	
+ID, name, phone, assignment, status	
+Trips, driver ledger and settlement
+	
+Materials	
+20 MM, 12 MM, Black M-Sand, WMM, Boulders	
+Standard reporting
+	
+Sources/Crushers	
+Name, contact, commercial terms	
+Source-side movement and costs
+	
+Locations	
+Load/unload place, one-side KM	
+Trip routing and analysis
+	
+Fuel stations	
+Station, account terms	
+Diesel records
+	
+Accounts	
+Cash, bank, online accounts	
+Financial ledger
+	
+Rate rules	
+Customer/transport/source rates, taxes	
+Controlled calculations
+
+13. Daily Trip / Tipper Module
+This module replaces the core daily tipper workbook. It must support both 'No Load' vehicle status and loaded/active trips, without forcing a meaningless financial record for a no-load vehicle.
+	
+Entry group	
+Fields
+	
+Trip identity	
+Trip ID, business date, entry user, status
+	
+Vehicle	
+Vehicle registration, opening/current KM
+	
+Driver	
+Assigned driver
+	
+Source	
+Crusher/source, crate/load unit, source invoice/bill
+	
+Customer	
+Phone-first customer lookup, customer ID, contact
+	
+Movement	
+Load place, delivery place, load date, unload date
+	
+Material	
+Material, load ton, unload ton, load CFT, unload CFT, shortage
+	
+Commercial	
+Customer rate, transport rate, source rate, bill no., tax
+	
+Receivable	
+Billable amount, received amount, outstanding, payment status
+	
+Operational	
+KM, delivery status, notes, attachments
+
+Trip statuses
+No Load
+Assigned
+Loaded
+Running
+Delivered
+Payment Pending
+Completed
+Cancelled
+Existing Excel formulas should be documented and converted into explicit application rules. For example, quantity × rate may calculate a billable amount, while fixed charges, source costs, diesel allocations and other business rules should be separately represented and configurable.
+14. Customer Management and Customer Ledger
+	
+Feature	
+Design
+	
+Search	
+Phone number first; name as secondary search; additional contacts supported
+	
+Profile	
+Customer ID, name, phone(s), address, GSTIN, credit terms, notes
+	
+Transactions	
+Trips, invoices, receipts, adjustments
+	
+Statement	
+Opening balance + billing - receipts ± adjustments = closing balance
+	
+Payment allocation	
+One payment can settle one or multiple invoices/trips
+	
+Duplicate protection	
+Phone match + Admin-assisted merge for legacy duplicates
+	
+Export	
+Customer statement to PDF/Excel and print
+
+	
+Sample evidenceThe K Engineering sample demonstrates exactly the type of running customer account the system should automate: billing rows, later receipt rows and a closing balance. The sample total is ₹13,55,000 billed, ₹10,80,000 received and ₹2,75,000 outstanding.
+
+15. Invoice Generation and Billing
+APPROVED BILLABLE TRIP / TRANSACTION        ↓VERIFY CUSTOMER + QUANTITY + RATE + TAX        ↓GENERATE UNIQUE INVOICE        ↓PRINT / PDF        ↓CUSTOMER RECEIVABLE        ↓LATER PAYMENT → ALLOCATION → INVOICE BALANCE
+
+Configurable company header, address, contact and tax details.
+Unique invoice number with cancellation controls.
+Customer and billing details from master records.
+Trip/vehicle/material/quantity/rate references where required.
+Subtotal, tax/GST and total.
+Received and outstanding amounts.
+Authorized signature area.
+Print, PDF and authorized Excel output.
+Invoice statuses should include Draft, Generated/Posted, Partially Paid, Paid and Cancelled.
+16. Driver Accounts and Driver Ledger
+The driver samples contain advances, source/crusher amounts, toll and other ledger items. These should become structured driver transactions rather than free-text spreadsheet rows.
+	
+Driver event	
+System behavior
+	
+Advance	
+Driver + amount + payment account + purpose/reference
+	
+Earning/payable	
+Generated from configured trip/driver rules where applicable
+	
+Toll	
+Expense + driver + trip/vehicle reference
+	
+Source/crusher item	
+Source amount + trip/reference
+	
+Other expense	
+Category + amount + receipt if available
+	
+Settlement	
+Payment allocated to one or more outstanding driver items
+
+The ledger must distinguish 'amount owed/earned' from 'amount actually paid'. A payment made later must not rewrite the historical trip.
+17. Diesel Management
+	
+Field	
+System rule
+	
+Diesel amount	
+Litres × rate
+	
+KM travelled	
+End KM - Start KM
+	
+Mileage	
+KM travelled ÷ litres when valid
+	
+Fuel station	
+Controlled master
+	
+Bill number	
+Reference with duplicate detection
+	
+Vehicle	
+Required for vehicle-attributable diesel
+	
+Payment account	
+Cash/bank/credit as applicable
+	
+Cancelled/void	
+Retained and audited; never silently deleted
+
+The samples include incomplete KM fields and a cancelled entry. The application should show validation warnings and prevent unreliable mileage or financial posting.
+18. Vehicle and Maintenance Management
+	
+Vehicle screen	
+Information
+	
+Overview	
+Registration, type, status, assigned driver, current KM
+	
+Trips	
+Daily/monthly trips and revenue
+	
+Diesel	
+Litres, cost, mileage and fuel-station history
+	
+Maintenance	
+Service date, KM, type, supplier, cost, receipt
+	
+Compliance	
+Insurance, FC, permit and other expiry dates
+	
+Economics	
+Revenue, diesel, maintenance, driver cost and contribution
+	
+Documents	
+Service bills and vehicle documents
+
+19. Crusher / Source Management
+The boulder/load sample shows source-side invoice information, loaded and unloaded tonnage, shortage, KM, transport rent and customer-side amount. The new system should model this as a source-to-customer chain.
+SOURCE / CRUSHER↓ source invoice + loaded quantityVEHICLE + DRIVER↓ transport movementCUSTOMER / DELIVERY↓ unload quantity + delivery billCOMMERCIAL RESULT↓CUSTOMER RECEIVABLE + SOURCE COST/PAYABLE + TRIP COST
+
+20. Cash, Bank and Online Accounts
+The existing accounts workbook has Online Accounts and Cash Accounts with credit/debit entries, transfers, old balances, driver advances and customer receipts. These become views of a common financial engine.
+	
+Function	
+Design
+	
+Cash	
+Receipts and payments with running balance
+	
+Bank	
+Receipts and payments by bank account
+	
+Online	
+Separate account type where needed
+	
+Transfer	
+One linked transfer between source and destination accounts
+	
+Opening balance	
+Explicit opening balance transaction
+	
+Reconciliation	
+Optional bank statement matching
+	
+Statement	
+Date, reference, party, category, debit, credit, balance
+
+21. Central Financial Ledger & Delayed Payments
+This is the feature that makes all modules correlate. Every financial event receives a transaction ID and may reference customer, driver, vehicle, trip, invoice, source or account.
+	
+Event	
+Business date	
+Payment date	
+Effect
+	
+Trip/sale	
+Date work happened	
+—	
+Creates receivable/billable amount when applicable
+	
+Customer payment	
+—	
+Date received	
+Reduces invoice/customer balance and increases cash/bank
+	
+Driver advance	
+Date obligation/issue	
+Date paid	
+Driver ledger + cash/bank effect
+	
+Diesel	
+Fuel purchase date	
+Date paid/posted	
+Diesel expense + cash/bank or payable
+	
+Maintenance	
+Repair/service date	
+Date paid	
+Vehicle cost + cash/bank or payable
+	
+Source payment	
+Obligation date	
+Payment date	
+Source payable reduced + cash/bank
+
+Partial payment example
+Invoice = ₹1,00,000Day 3 payment = ₹30,000Day 7 payment = ₹40,000Day 15 payment = ₹20,000Total received = ₹90,000Outstanding = ₹10,000Original invoice and trip records remain unchanged.
+
+One customer payment can also be allocated across several open invoices. This should be a standard Accounts workflow.
+22. Expense and Payment Management
+	
+Expense	
+Linkage
+	
+Diesel	
+Vehicle + driver + station + amount
+	
+Maintenance	
+Vehicle + supplier + amount
+	
+Tyre	
+Vehicle + supplier
+	
+Toll	
+Vehicle + driver + trip
+	
+Driver advance	
+Driver + trip/purpose
+	
+Source payment	
+Source + trip/load
+	
+Salary	
+Employee/driver + period
+	
+Office expense	
+Category + account
+	
+Insurance/permit	
+Vehicle + compliance record
+	
+Other	
+Category + description + amount
+
+23. Reporting, Excel, PDF and Printing
+	
+Report family	
+Examples
+	
+Daily operations	
+Trips, vehicle status, deliveries, load summary
+	
+Customer	
+Statement, invoices, receipts, outstanding/aging
+	
+Driver	
+Ledger, advances, expenses, settlement
+	
+Vehicle	
+Trips, diesel, mileage, maintenance, contribution
+	
+Diesel	
+Daily/monthly fuel, litres, cost, mileage
+	
+Accounts	
+Cash book, bank book, account statement, receipts, payments
+	
+Source/crusher	
+Loads, source bills, quantities and payments
+	
+Management	
+Revenue, expenses, receivable, profitability, utilization
+	
+Audit	
+User actions, edits, approvals, exports
+
+Excel export: structured columns suitable for analysis.
+PDF export: print-ready statements and reports.
+Print: browser/print-friendly report templates.
+Filters: date, customer, vehicle, driver, source, material, account and status.
+Permissions: export only data the user is authorized to view.
+24. Dashboards and Management KPIs
+	
+KPI	
+Meaning
+	
+Trips completed	
+Completed/delivered trips in selected period
+	
+Trips running	
+Current operational status
+	
+Billing/revenue	
+Approved billable transactions
+	
+Customer receivable	
+Invoices less allocated receipts
+	
+Cash balance	
+Cash account balances
+	
+Bank balance	
+Bank/online account balances
+	
+Diesel cost	
+Posted diesel expenses
+	
+Maintenance cost	
+Posted vehicle maintenance
+	
+Driver advances	
+Outstanding driver advances/payables
+	
+Vehicle utilization	
+Trips/operating days or approved utilization formula
+	
+Average mileage	
+KM/litres by vehicle and period
+	
+Customer concentration	
+Revenue by customer
+	
+Contribution	
+Configured revenue less selected direct operating costs
+
+Every dashboard KPI should drill down to the underlying records. A management number must be traceable to transactions.
+25. Approval, Audit Trail and Security
+	
+Control	
+Requirement
+	
+Individual accounts	
+No shared staff logins
+	
+RBAC	
+Role + granular module permissions
+	
+Approval	
+Sensitive/financial changes can require approval
+	
+Audit	
+Create, edit, approve, archive, cancel, export and permission changes
+	
+Before/after	
+Store changed values for important edits
+	
+Deletion	
+Financial records normally archived/cancelled rather than physically deleted
+	
+Session security	
+Secure sessions, timeout and logout
+	
+Backups	
+Automated backups and tested recovery
+	
+Export logging	
+Track sensitive report exports
+
+USER EDITS IMPORTANT RECORD↓SYSTEM STORES OLD VALUE + NEW VALUE + USER + TIME + REASON↓AUTHORIZED REVIEW↓AUDIT HISTORY REMAINS
+
+Example: if a trip amount changes from ₹25,000 to ₹28,000, the system should retain the original value, new value, user, timestamp and reason. Admin should be able to inspect this history.
+26. Excel Import & Historical Data Migration
+UPLOAD WORKBOOK↓DETECT SHEETS/COLUMNS↓MAP TO SYSTEM FIELDS↓VALIDATE DATES / NUMBERS / MASTERS↓DUPLICATE CHECK↓PREVIEW ERRORS/WARNINGS↓ADMIN CONFIRM↓COMMIT↓IMPORT LOG + SOURCE REFERENCE
+
+Do not import formatting as business data.
+Normalize vehicle registrations and master names.
+Match customers by phone where available.
+Preserve original bill/invoice references.
+Preserve load/unload/payment dates separately when available.
+Retain workbook/sheet/row metadata for traceability.
+Flag ambiguous records instead of guessing.
+27. Technical Architecture
+BROWSER↓NEXT.JS + TYPESCRIPT WEB APPLICATION↓AUTHENTICATION + RBAC + VALIDATION↓API / APPLICATION SERVICES↓PRISMA ORM↓POSTGRESQL├─ Master Data├─ Operations├─ Finance├─ Documents└─ Audit Logs↓FILE / OBJECT STORAGE FOR RECEIPTS AND DOCUMENTS
+
+	
+Domain	
+Core database entities
+	
+Identity	
+users, roles, permissions, user_permissions
+	
+Customers	
+customers, customer_contacts, customer_ledger
+	
+Fleet	
+vehicles, vehicle_documents, vehicle_maintenance
+	
+Drivers	
+drivers, driver_assignments, driver_ledger
+	
+Operations	
+trips, trip_items, deliveries, trip_status_history
+	
+Sources	
+sources/crushers, source_documents, source_transactions
+	
+Fuel	
+fuel_stations, diesel_entries
+	
+Billing	
+invoices, invoice_items, invoice_allocations
+	
+Finance	
+accounts, financial_transactions, payments, expenses, transfers
+	
+Governance	
+audit_logs, import_jobs, import_rows, system_settings
+
+PostgreSQL should be the source of truth. Excel is an import/export format. This architecture supports concurrent users, constraints, permissions, auditability and reliable reporting.
+28. End-to-End Business Workflows
+28.1 Trip → Invoice → Later Customer Payment
+Worker creates trip↓Customer identified by phone↓Vehicle + Driver + Source + Material + Quantity + Rate↓Trip ID generated↓Invoice generated/approved↓Receivable created↓Three days later Accounts records payment↓Payment allocated↓Invoice/customer/account balances update
+
+28.2 Trip → Diesel → Vehicle Cost
+Vehicle works↓Diesel entry with litres/rate/KM↓Diesel expense posted↓Vehicle history updated↓Mileage/cost analytics update
+
+28.3 Trip → Driver → Advance/Settlement
+Driver assigned↓Driver ledger item generated where applicable↓Accounts pays advance later↓Payment linked to driver ledger↓Driver balance updates
+
+28.4 Maintenance → Payment Later
+Repair/service occurs 05-Sep↓Vehicle maintenance cost recorded↓Payable/pending if unpaid↓Payment on 09-Sep↓Cash/bank decreases; maintenance remains dated 05-Sep
+
+28.5 One Customer Payment → Multiple Invoices
+Customer pays ₹70,000↓Accounts selects customer↓Open invoices displayed↓Allocate ₹30,000 + ₹25,000 + ₹15,000↓All balances update
+
+29. Recommended Development Roadmap
+	
+Phase	
+Scope	
+Deliverable
+	
+0 Discovery	
+All Excel fields, formulas, workflows, reports and roles	
+Approved functional specification
+	
+1 Foundation	
+Admin, authentication, RBAC, masters, audit	
+Secure platform
+	
+2 Operations	
+Trips, vehicles, drivers, customers, statuses	
+Digital daily operations
+	
+3 Diesel & vehicle cost	
+Fuel, KM, mileage, maintenance	
+Vehicle cost visibility
+	
+4 Party ledgers	
+Customer receivable, driver ledger, payments	
+Connected balances
+	
+5 Accounts	
+Cash, bank, transfers, expenses, central ledger	
+Financial control
+	
+6 Invoices	
+Invoice generation, print, PDF, status	
+Billing workflow
+	
+7 Management	
+MD/manager dashboards and drill-down	
+Decision visibility
+	
+8 Reports	
+Excel/PDF/print exports	
+Management reporting
+	
+9 Migration	
+Historical Excel import and reconciliation	
+Legacy continuity
+	
+10 Hardening	
+Security, performance, backups, UAT	
+Production readiness
+
+Do not build the dashboard first. Stabilize the underlying data model and financial relationships first; dashboards should consume those same records.
+30. Testing & Acceptance Criteria
+	
+Scenario	
+Acceptance condition
+	
+Customer identity	
+Existing phone finds customer; no unwanted duplicate
+	
+Trip entry	
+Worker creates a trip and receives a permanent Trip ID
+	
+Delayed payment	
+Payment days later updates correct invoice/customer balance without changing trip date
+	
+Partial payment	
+Invoice balance remains correct
+	
+Multi-invoice payment	
+One payment can be allocated across open invoices
+	
+Driver advance	
+Driver ledger and cash/bank update correctly
+	
+Diesel	
+Amount/KM/mileage calculate correctly; invalid values warn/block as configured
+	
+Transfer	
+Source and destination accounts update from one linked transfer
+	
+Invoice	
+Unique invoice can be generated and printed/PDF
+	
+Permissions	
+Restricted users cannot access Admin or unauthorized financial modules
+	
+Audit	
+Important edits show user/time/before-after
+	
+Export	
+Authorized users can download required Excel/PDF
+	
+Migration	
+Imported records validate and retain source references
+	
+Reconciliation	
+Customer, driver, vehicle and account reports reconcile to transaction data
+
+31. Future AI & Automation
+AI should be added after the core data and accounting system is reliable.
+Management questions. Ask for vehicle, customer, driver or expense summaries in natural language.
+Anomaly detection. Flag unusual mileage, fuel cost, expense spikes or abnormal receivables.
+Collections support. Prioritize overdue customers and summarize payment history.
+Forecasting. Estimate future diesel demand, trips or maintenance needs.
+Document extraction. Read bill/receipt information from uploaded documents where practical.
+Daily management summary. Generate a concise operational and financial briefing.
+Data-quality assistance. Suggest possible duplicate customers and inconsistent master names.
+	
+AI boundaryAI should recommend, summarize and detect patterns. Core financial calculations, ledger posting, permissions and audit controls should remain deterministic and governed by the application.
+
+32. Risks, Controls & Recommendations
+	
+Risk	
+Control
+	
+Incomplete requirements	
+Review every current workbook before final schema
+	
+Duplicate customers	
+Phone-first lookup + internal Customer ID + Admin merge
+	
+Hidden formulas	
+Document and convert important formulas into business rules
+	
+Free-text accounting	
+Structured transaction fields + controlled categories
+	
+Uncontrolled edits	
+RBAC + approval + audit
+	
+Data deletion	
+Archive/cancel financial records instead of hard delete
+	
+Migration errors	
+Preview + validation + reconciliation
+	
+Dashboard mismatch	
+All KPIs derive from the central transaction model
+	
+Shared logins	
+Individual accounts
+	
+Data loss	
+Automated backup + recovery testing
+	
+Complex worker UI	
+Task-specific forms and controlled dropdowns
+
+Recommended management policies
+Every employee gets a unique login.
+Admin controls permissions.
+Financial records are not silently deleted.
+Customer payments must identify the customer and, where possible, the invoice/trip.
+Every trip receives a permanent Trip ID.
+Operational date and payment date are stored separately.
+Excel is not the database.
+33. Management Decision & Next Steps
+The recommended next step is to approve a structured discovery/data-mapping stage using all existing Excel workbooks. The purpose is to ensure that every field, calculation and business practice currently used by the company is represented before development begins.
+Upload all remaining Excel files. Include any maintenance, salary, toll, source, customer, monthly closing and other operational sheets.
+Create a field dictionary. Define every field, who enters it, when, and whether it is required.
+Confirm commercial rules. Rates, GST/tax, driver calculations, transport costs, source payments and settlement.
+Approve roles and permissions. Confirm Admin, MD, Assistant Manager, Accounts, Operations Manager and Worker boundaries.
+Approve the connected data model. Trips, customers, drivers, vehicles, invoices, payments and accounts must be linked.
+Build an end-to-end pilot. Trip → invoice → later payment → account reconciliation → dashboard → Excel/PDF.
+Migrate historical data. Only after validation and reconciliation.
+Roll out in stages. Keep the old Excel process as a temporary reference during transition.
+	
+First production milestoneA complete workflow should work from Worker trip entry → phone-based customer identification → invoice → payment three days later → customer/invoice/bank balance update → MD drill-down → authorized Excel/PDF report.
+
+
+Appendix A. Sample Data Mapping
+	
+Current sample field	
+Proposed field	
+Module	
+Treatment
+	
+DATE / Data Entry DATE	
+entryDate / transactionDate	
+Operations	
+Preserve business date
+	
+STATUS	
+tripStatus	
+Trips	
+Controlled values
+	
+VEHICLE NO	
+vehicleId	
+Trips	
+Map to vehicle master
+	
+BILL NO	
+billReference	
+Trips/Billing	
+Preserve original reference
+	
+DRIVER NAME	
+driverId	
+Trips	
+Map to driver master
+	
+CRASSER/CRUSHER NAME	
+sourceId	
+Trips/Source	
+Map to source master
+	
+Crate	
+loadUnit	
+Trips	
+Preserve where operationally required
+	
+CUSTOMER	
+customerId	
+Trips	
+Phone-first lookup
+	
+CONTACT NO	
+customerPhone/contactId	
+Customers	
+Business identifier
+	
+DELIVERY PLACE	
+deliveryLocationId	
+Trips	
+Location master
+	
+METRIAL / MATERIAL	
+materialId	
+Trips	
+Normalize spelling
+	
+Loa-Ton	
+loadTon	
+Trips	
+Numeric
+	
+Load Rate	
+commercialRate	
+Billing	
+Exact meaning to confirm
+	
+MINES PASS	
+minePassAmount/reference	
+Trips/Source	
+Confirm whether amount/reference
+	
+Loa-Cft	
+loadCft	
+Trips	
+Numeric
+	
+Un-TON	
+unloadTon	
+Trips	
+Shortage/reconciliation
+	
+Un-CFT	
+unloadCft	
+Trips	
+Numeric
+	
+Cust Mate Amt	
+customerAmount	
+Billing	
+Calculated/posted
+	
+Cust Rec Amt	
+paymentAllocation	
+Finance	
+Convert to payment transaction
+	
+Craser Recv	
+sourceReceipt/payment	
+Source/Finance	
+Confirm business meaning
+	
+km	
+tripKm	
+Trips	
+Numeric
+	
+Vech Balance	
+tripContribution	
+Analytics	
+Replace opaque formula with explicit cost components
+	
+Diesel litres	
+litres	
+Diesel	
+Fuel quantity
+	
+Diesel rate	
+rate	
+Diesel	
+Fuel price
+	
+Start Km / End km	
+startKm / endKm	
+Diesel	
+Mileage inputs
+	
+Mileage	
+mileage	
+Diesel	
+Calculated
+	
+Credit/Debit	
+credit/debit	
+Finance	
+Central ledger
+	
+Balance	
+runningBalance	
+Finance	
+Calculated from ledger
+	
+Description	
+description + structured refs	
+Finance	
+Do not rely on free text
+
+Appendix B. Proposed Permission Matrix
+	
+Permission	
+Admin	
+MD	
+Asst. Mgr	
+Accounts	
+Ops Mgr	
+Worker
+	
+View trips	
+Yes	
+Yes	
+Yes	
+Yes	
+Yes	
+Yes
+	
+Create trips	
+Yes	
+Optional	
+Yes	
+Optional	
+Yes	
+Yes
+	
+Edit trips	
+Yes	
+Optional	
+Yes	
+Optional	
+Yes	
+Limited
+	
+Archive/cancel trip	
+Yes	
+Controlled	
+Controlled	
+Controlled	
+Controlled	
+No
+	
+View customers	
+Yes	
+Yes	
+Yes	
+Yes	
+Yes	
+Limited
+	
+Create customer	
+Yes	
+Optional	
+Yes	
+Yes	
+Yes	
+Yes
+	
+Merge customers	
+Yes	
+Request	
+No	
+No	
+No	
+No
+	
+View driver ledger	
+Yes	
+Yes	
+Optional	
+Yes	
+Optional	
+Limited
+	
+Driver payments	
+Yes	
+Optional	
+No	
+Yes	
+No	
+No
+	
+View cash/bank	
+Yes	
+Yes	
+Configured	
+Yes	
+Configured	
+No
+	
+Finance transactions	
+Yes	
+Optional	
+No	
+Yes	
+No	
+No
+	
+Generate invoice	
+Yes	
+Yes	
+Yes	
+Yes	
+Yes	
+Configured
+	
+Print/PDF/Excel	
+Yes	
+Yes	
+Yes	
+Yes	
+Yes	
+Configured
+	
+Manage users	
+Yes	
+No	
+No	
+No	
+No	
+No
+	
+Manage permissions	
+Yes	
+No	
+No	
+No	
+No	
+No
+	
+System settings	
+Yes	
+No	
+No	
+No	
+No	
+No
+	
+Audit logs	
+Yes	
+Yes/limited	
+No	
+Limited	
+No	
+No
+	
+Excel import	
+Yes	
+Configured	
+Configured	
+Configured	
+Configured	
+No
+Final Recommendation
+The sample workbooks demonstrate a substantial existing business process. The correct modernization strategy is to preserve the business knowledge in those workbooks while replacing manual duplication with structured relationships.
+The core chain should be: Trip → Customer → Invoice/Receivable → Later Payment → Cash/Bank → Customer Balance, while the same trip also links to Driver, Vehicle, Source, Diesel and Maintenance. This gives management a single version of the truth and makes every important number traceable.
+	
+Proposed system in one sentenceOne secure transportation platform where every operational and financial event is entered once, linked by permanent IDs, controlled by Admin permissions, traceable through audit history, and available to management through dashboards, invoices and Excel/PDF reports.
+
+END OF PROPOSAL
+
