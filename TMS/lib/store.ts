@@ -984,6 +984,20 @@ export function useTmsStore() {
     [addAudit]
   );
 
+  const createVehicle = useCallback(
+    (vehicle: any, actorName = 'Manager') => {
+      saveMasterItem('vehicles', vehicle, 'registration', actorName);
+    },
+    [saveMasterItem]
+  );
+
+  const createDriver = useCallback(
+    (driver: any, actorName = 'Manager') => {
+      saveMasterItem('drivers', driver, 'id', actorName);
+    },
+    [saveMasterItem]
+  );
+
   const resetToDefaults = useCallback(() => {
     writeStore(defaultState);
   }, []);
@@ -993,6 +1007,8 @@ export function useTmsStore() {
     createTrip,
     updateTripStatus,
     createCustomer,
+    createVehicle,
+    createDriver,
     createInvoice,
     recordCustomerPayment,
     recordWorkerWage,

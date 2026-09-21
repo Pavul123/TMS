@@ -267,8 +267,8 @@ export function AdminImports() {
   const runValidation = () => {
     const config = ENTITY_CONFIGS[importType];
     const existingCustomerPhones = new Set(customers.map(c => c.phone?.trim()));
-    const existingVehiclePlates = new Set(vehicles.map(v => v.registrationNo?.trim().toUpperCase()));
-    const existingDriverLicenses = new Set(drivers.map(d => d.licenseNo?.trim().toUpperCase()));
+    const existingVehiclePlates = new Set(vehicles.map(v => v.registration?.trim().toUpperCase()));
+    const existingDriverLicenses = new Set(drivers.map(d => d.licenseNumber?.trim().toUpperCase()));
 
     const validated: ParsedRow[] = rawRows.map((raw) => {
       const data: Record<string, string> = {};
@@ -336,7 +336,7 @@ export function AdminImports() {
           createCustomer({
             id: `CUS-${String(customers.length + 101 + idx)}`,
             name: r.data['name'] || 'Unnamed Customer',
-            phone: r.data['phone'] || '',
+            phone: r.data['phone'] || `9842${Math.floor(100000 + Math.random() * 900000)}`,
             address: r.data['address'] || 'Site Address',
             creditTerms: r.data['creditTerms'] || '30 Days',
             status: 'ACTIVE',
@@ -347,52 +347,62 @@ export function AdminImports() {
           });
         });
       } else if (importType === 'VEHICLES') {
-        validRows.forEach((r, idx) => {
+        validRows.forEach((r) => {
           createVehicle({
-            id: `VEH-${String(vehicles.length + 101 + idx)}`,
-            registrationNo: r.data['registrationNo'].toUpperCase(),
-            model: r.data['model'] || 'Commercial Tipper',
-            capacityTons: parseFloat(r.data['capacityTons']) || 20,
-            ownership: (r.data['ownership']?.toUpperCase() === 'ATTACHED' ? 'ATTACHED' : 'OWNED') as any,
-            status: 'ACTIVE',
-            fitnessExpiry: '2027-12-31',
-            insuranceExpiry: '2027-12-31',
+            registration: r.data['registrationNo'].toUpperCase(),
+            type: r.data['model'] || 'Tipper',
+            ownership: (r.data['ownership']?.toUpperCase() === 'ATTACHED' ? 'RENTED' : 'OWN') as any,
+            capacity: `${parseFloat(r.data['capacityTons']) || 20} Ton`,
+            fuelCapacity: '180 L',
+            currentKm: 10000,
+            status: 'AVAILABLE',
           });
         });
       } else if (importType === 'DRIVERS') {
         validRows.forEach((r, idx) => {
           createDriver({
             id: `DRV-${String(drivers.length + 101 + idx)}`,
-            name: r.data['name'],
-            phone: r.data['phone'],
-            licenseNo: r.data['licenseNo'].toUpperCase(),
+            name: r.data['name'] || 'Driver',
+            phone: r.data['phone'] || `9840${Math.floor(100000 + Math.random() * 900000)}`,
+            licenseNumber: r.data['licenseNo']?.toUpperCase() || `DL-${Math.floor(100000 + Math.random() * 900000)}`,
             assignedVehicle: r.data['assignedVehicle'] || undefined,
-            status: 'ACTIVE',
-            salaryType: 'DAILY',
-            dailyBatta: 400,
-            monthlySalary: 18000,
+            status: 'AVAILABLE',
+            advanceBalance: 0,
+            totalEarnings: 0,
+            totalSettled: 0,
           });
         });
       } else if (importType === 'TRIPS') {
         validRows.forEach((r, idx) => {
+          const qty = parseFloat(r.data['netWeight']) || 20;
+          const rate = 480;
+          const custName = r.data['customerName'] || customers[0]?.name || 'Direct Customer';
+          const cust = customers.find(c => c.name.toLowerCase() === custName.toLowerCase()) || customers[0];
+
           createTrip({
-            vehicleNumber: r.data['vehicleNumber'],
-            customerName: r.data['customerName'],
-            sourceName: r.data['sourceName'],
-            materialName: r.data['material'],
-            destinationName: 'Main Site Delivery',
-            netWeight: parseFloat(r.data['netWeight']) || 20,
-            driverName: 'Assigned Driver',
-            truckType: '10-Wheeler Tipper',
-            isNoLoad: false,
-            permitNumber: `PRM-${Math.floor(10000 + Math.random() * 90000)}`,
+            id: `TRP-${String(trips.length + 1001 + idx)}`,
+            date: r.data['date'] || new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+            customerId: cust?.id || 'CUS-00124',
+            customerName: custName,
+            customerPhone: cust?.phone || '+91 94431 52671',
+            vehicleRegistration: r.data['vehicleNumber'] || vehicles[0]?.registration || 'TN 58 AB 2345',
+            vehicleOwnership: 'OWN',
+            driverId: drivers[0]?.id || 'DRV-0012',
+            driverName: drivers[0]?.name || 'Ravi Kumar',
+            driverPhone: drivers[0]?.phone || '+91 98401 12345',
+            material: r.data['material'] || '20 MM Aggregate',
+            quantity: qty,
+            unit: 'Ton',
+            source: r.data['sourceName'] || 'ABC Crusher',
+            loadingLocation: 'Crusher Yard',
             deliveryLocation: 'Consignee Site',
-            driverId: drivers[0]?.id || 'DRV-0001',
-            vehicleId: vehicles[0]?.id || 'VEH-0001',
-            customerId: customers[0]?.id || 'CUS-0001',
-            sourceId: 'SRC-001',
-            materialId: 'MAT-001',
-            locationId: 'LOC-001',
+            appliedRate: rate,
+            rateUnit: 'Ton',
+            totalAmount: qty * rate,
+            status: 'DELIVERED',
+            progress: 7,
+            enteredBy: 'Super Admin (Import)',
+            notes: `Imported from ${fileName || 'spreadsheet'}`,
           });
         });
       }

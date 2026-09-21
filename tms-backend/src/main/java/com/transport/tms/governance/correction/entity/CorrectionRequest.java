@@ -56,8 +56,7 @@ public class CorrectionRequest {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default

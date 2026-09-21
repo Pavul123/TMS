@@ -60,8 +60,7 @@ public class Payment {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     @OneToMany(mappedBy = "payment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference

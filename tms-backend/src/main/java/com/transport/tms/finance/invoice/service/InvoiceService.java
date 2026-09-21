@@ -8,6 +8,7 @@ import com.transport.tms.finance.invoice.entity.InvoiceItem;
 import com.transport.tms.finance.invoice.repository.InvoiceRepository;
 import com.transport.tms.finance.ledger.service.LedgerService;
 import com.transport.tms.master.customer.entity.Customer;
+import com.transport.tms.master.customer.repository.CustomerRepository;
 import com.transport.tms.master.customer.service.CustomerService;
 import com.transport.tms.security.UserPrincipal;
 import com.transport.tms.trip.entity.Trip;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,60 +31,153 @@ public class InvoiceService {
 
     private final InvoiceRepository invoiceRepository;
     private final TripRepository tripRepository;
+    private final CustomerRepository customerRepository;
     private final CustomerService customerService;
     private final LedgerService ledgerService;
     private final IdGenerator idGenerator;
 
     @Transactional
     public Invoice generateInvoice(InvoiceDto.GenerateInvoiceRequest request, UserPrincipal currentUser) {
-        Customer customer = customerService.getCustomerById(request.getCustomerId());
+        // 1. Resolve Customer safely (by ID or Name, or ensure record in database)
+        Customer customer = null;
+        if (request.getCustomerId() != null && !request.getCustomerId().isBlank()) {
+            customer = customerRepository.findById(request.getCustomerId()).orElse(null);
+        }
+        if (customer == null && request.getCustomerName() != null && !request.getCustomerName().isBlank()) {
+            List<Customer> search = customerRepository.searchCustomers(request.getCustomerName());
+            if (!search.isEmpty()) {
+                customer = search.get(0);
+            }
+        }
+        if (customer == null) {
+            String custId = (request.getCustomerId() != null && !request.getCustomerId().isBlank())
+                    ? request.getCustomerId()
+                    : idGenerator.generateCustomerId();
+            String custName = (request.getCustomerName() != null && !request.getCustomerName().isBlank())
+                    ? request.getCustomerName()
+                    : "Customer " + custId;
+            String uniqueSuffix = String.format("%06d", Math.abs(custId.hashCode()) % 1000000);
+            String phone = "+91 9842" + uniqueSuffix;
+            while (customerRepository.existsByPhone(phone)) {
+                uniqueSuffix = String.format("%06d", (int)(Math.random() * 900000) + 100000);
+                phone = "+91 9842" + uniqueSuffix;
+            }
+
+            customer = Customer.builder()
+                    .id(custId)
+                    .name(custName)
+                    .phone(phone)
+                    .address(request.getCustomerAddress() != null ? request.getCustomerAddress() : "Project Site Office")
+                    .gstin(request.getCustomerGstin())
+                    .status("ACTIVE")
+                    .openingBalance(BigDecimal.ZERO)
+                    .build();
+            customer = customerRepository.save(customer);
+        }
 
         String invoiceId = idGenerator.generateInvoiceId();
         BigDecimal subtotal = BigDecimal.ZERO;
         List<InvoiceItem> items = new ArrayList<>();
 
+        LocalDate invDate = request.getDate() != null ? request.getDate() : LocalDate.now();
+        LocalDate dueDate = request.getDueDate() != null ? request.getDueDate() : invDate.plusDays(30);
+
+        String generatedBy = (currentUser != null && currentUser.getFullName() != null)
+                ? currentUser.getFullName()
+                : "Accounts Officer";
+
+        String customerGstin = request.getCustomerGstin() != null && !request.getCustomerGstin().isBlank()
+                ? request.getCustomerGstin()
+                : customer.getGstin();
+
         Invoice invoice = Invoice.builder()
                 .id(invoiceId)
-                .date(request.getDate())
-                .dueDate(request.getDueDate() != null ? request.getDueDate() : request.getDate().plusDays(30))
+                .date(invDate)
+                .dueDate(dueDate)
                 .customerId(customer.getId())
                 .customerName(customer.getName())
-                .customerGstin(customer.getGstin())
+                .customerGstin(customerGstin)
                 .taxRate(request.getTaxRate() != null ? request.getTaxRate() : BigDecimal.ZERO)
                 .status("GENERATED")
                 .notes(request.getNotes())
-                .generatedBy(currentUser.getFullName())
+                .generatedBy(generatedBy)
                 .items(new ArrayList<>())
                 .build();
 
-        for (String tripId : request.getTripIds()) {
-            Trip trip = tripRepository.findById(tripId)
-                    .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Trip", "id", tripId));
+        // 2. Process Trip Items if tripIds provided
+        if (request.getTripIds() != null && !request.getTripIds().isEmpty()) {
+            for (String tripId : request.getTripIds()) {
+                if (tripId == null || tripId.isBlank()) continue;
+                Trip trip = tripRepository.findById(tripId).orElse(null);
+                if (trip == null) {
+                    continue;
+                }
 
-            if (trip.getInvoiceId() != null && !trip.getInvoiceId().isBlank()) {
-                throw new Exceptions.BadRequestException("Trip " + tripId + " is already billed under Invoice " + trip.getInvoiceId());
+                if (trip.getInvoiceId() != null && !trip.getInvoiceId().isBlank()) {
+                    throw new Exceptions.BadRequestException("Trip " + tripId + " is already billed under Invoice " + trip.getInvoiceId());
+                }
+
+                BigDecimal amount = trip.getTotalAmount();
+                if (amount == null) {
+                    BigDecimal qty = trip.getQuantity() != null ? trip.getQuantity() : BigDecimal.ZERO;
+                    BigDecimal rate = trip.getAppliedRate() != null ? trip.getAppliedRate() : BigDecimal.ZERO;
+                    amount = qty.multiply(rate);
+                }
+                subtotal = subtotal.add(amount);
+
+                InvoiceItem item = InvoiceItem.builder()
+                        .invoice(invoice)
+                        .tripId(trip.getId())
+                        .tripDate(trip.getDate() != null ? trip.getDate() : invDate)
+                        .vehicle(trip.getVehicleRegistration() != null ? trip.getVehicleRegistration() : "Fleet Truck")
+                        .material(trip.getMaterial() != null ? trip.getMaterial() : "Transportation Service")
+                        .quantity(trip.getQuantity() != null ? trip.getQuantity() : BigDecimal.ONE)
+                        .unit(trip.getUnit() != null ? trip.getUnit() : "Ton")
+                        .rate(trip.getAppliedRate() != null ? trip.getAppliedRate() : amount)
+                        .amount(amount)
+                        .build();
+
+                items.add(item);
+
+                // Link trip to this invoice
+                trip.setInvoiceId(invoiceId);
+                tripRepository.save(trip);
             }
+        }
 
-            BigDecimal amount = trip.getTotalAmount();
-            subtotal = subtotal.add(amount);
+        // 3. Process Manual Line Items if provided
+        if (request.getManualItems() != null && !request.getManualItems().isEmpty()) {
+            int itemIndex = 1;
+            for (InvoiceDto.ManualItemRequest mi : request.getManualItems()) {
+                if (mi == null) continue;
+                BigDecimal qty = mi.getQuantity() != null ? mi.getQuantity() : BigDecimal.ONE;
+                BigDecimal rate = mi.getRate() != null ? mi.getRate() : BigDecimal.ZERO;
+                BigDecimal itemAmt = mi.getAmount() != null ? mi.getAmount() : qty.multiply(rate);
 
-            InvoiceItem item = InvoiceItem.builder()
-                    .invoice(invoice)
-                    .tripId(trip.getId())
-                    .tripDate(trip.getDate())
-                    .vehicle(trip.getVehicleRegistration())
-                    .material(trip.getMaterial())
-                    .quantity(trip.getQuantity())
-                    .unit(trip.getUnit())
-                    .rate(trip.getAppliedRate())
-                    .amount(amount)
-                    .build();
+                subtotal = subtotal.add(itemAmt);
 
-            items.add(item);
+                String directRef = (mi.getTripId() != null && !mi.getTripId().isBlank())
+                        ? mi.getTripId()
+                        : "ITEM-" + String.format("%03d", itemIndex++);
 
-            // Link trip to this invoice
-            trip.setInvoiceId(invoiceId);
-            tripRepository.save(trip);
+                InvoiceItem item = InvoiceItem.builder()
+                        .invoice(invoice)
+                        .tripId(directRef)
+                        .tripDate(mi.getDate() != null ? mi.getDate() : invDate)
+                        .vehicle(mi.getVehicle() != null ? mi.getVehicle() : "Fleet Direct")
+                        .material(mi.getDescription() != null ? mi.getDescription() : "Freight & Transport Service")
+                        .quantity(qty)
+                        .unit(mi.getUnit() != null ? mi.getUnit() : "Ton")
+                        .rate(rate)
+                        .amount(itemAmt)
+                        .build();
+
+                items.add(item);
+            }
+        }
+
+        if (items.isEmpty()) {
+            throw new Exceptions.BadRequestException("Cannot generate invoice: please select at least one trip or add a direct billing line item.");
         }
 
         BigDecimal taxRate = invoice.getTaxRate();
@@ -99,7 +194,7 @@ public class InvoiceService {
         Invoice saved = invoiceRepository.save(invoice);
 
         // Record Receivable entry in Central Ledger
-        ledgerService.recordReceivable(saved, currentUser.getFullName());
+        ledgerService.recordReceivable(saved, invoice.getGeneratedBy());
 
         return saved;
     }

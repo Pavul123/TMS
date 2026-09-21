@@ -77,8 +77,7 @@ public class Invoice {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     @OneToMany(mappedBy = "invoice", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     @JsonManagedReference

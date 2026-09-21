@@ -27,7 +27,7 @@ public class InvoiceItem {
     @JsonBackReference
     private Invoice invoice;
 
-    @Column(nullable = false, length = 32)
+    @Column(nullable = true, length = 64)
     private String tripId;
 
     @Column(nullable = false)

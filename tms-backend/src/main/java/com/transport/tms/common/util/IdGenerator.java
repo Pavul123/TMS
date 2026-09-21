@@ -2,23 +2,20 @@ package com.transport.tms.common.util;
 
 import org.springframework.stereotype.Component;
 
-import java.security.SecureRandom;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class IdGenerator {
 
-    private final AtomicLong tripSequence = new AtomicLong(1483);
-    private final AtomicLong invoiceSequence = new AtomicLong(1);
-    private final AtomicLong paymentSequence = new AtomicLong(1);
-    private final AtomicLong transactionSequence = new AtomicLong(2481);
-    private final AtomicLong correctionSequence = new AtomicLong(1);
-    private final AtomicLong customerSequence = new AtomicLong(127);
-    private final AtomicLong vehicleExpenseSequence = new AtomicLong(1);
-    private final AtomicLong dieselSequence = new AtomicLong(1);
-    private final AtomicLong transferSequence = new AtomicLong(1);
+    private final AtomicLong tripSequence = new AtomicLong(10000 + (System.currentTimeMillis() % 10000));
+    private final AtomicLong invoiceSequence = new AtomicLong(100 + (System.currentTimeMillis() % 900));
+    private final AtomicLong paymentSequence = new AtomicLong(100 + (System.currentTimeMillis() % 900));
+    private final AtomicLong transactionSequence = new AtomicLong(50000 + (System.currentTimeMillis() % 10000));
+    private final AtomicLong correctionSequence = new AtomicLong(100 + (System.currentTimeMillis() % 900));
+    private final AtomicLong customerSequence = new AtomicLong(1000 + (System.currentTimeMillis() % 1000));
+    private final AtomicLong vehicleExpenseSequence = new AtomicLong(100 + (System.currentTimeMillis() % 900));
+    private final AtomicLong dieselSequence = new AtomicLong(100 + (System.currentTimeMillis() % 900));
+    private final AtomicLong transferSequence = new AtomicLong(100 + (System.currentTimeMillis() % 900));
 
     public String generateTripId() {
         return String.format("TRP-%05d", tripSequence.incrementAndGet());

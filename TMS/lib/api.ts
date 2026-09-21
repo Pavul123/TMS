@@ -37,7 +37,7 @@ async function fetchWithAuth<T>(endpoint: string, options: RequestInit = {}): Pr
   }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 2500);
+  const timeoutId = setTimeout(() => controller.abort(), 3500);
 
   let response: Response;
   try {
@@ -101,17 +101,17 @@ export const apiClient = {
 
   // Master Data
   master: {
-    getCustomers: () => fetchWithAuth<any[]>('/master/customers'),
-    createCustomer: (data: any) => fetchWithAuth<any>('/master/customers', { method: 'POST', body: JSON.stringify(data) }),
-    getVehicles: () => fetchWithAuth<any[]>('/master/vehicles'),
-    createVehicle: (data: any) => fetchWithAuth<any>('/master/vehicles', { method: 'POST', body: JSON.stringify(data) }),
-    getDrivers: () => fetchWithAuth<any[]>('/master/drivers'),
-    createDriver: (data: any) => fetchWithAuth<any>('/master/drivers', { method: 'POST', body: JSON.stringify(data) }),
-    getSources: () => fetchWithAuth<any[]>('/master/sources'),
-    getMaterials: () => fetchWithAuth<any[]>('/master/materials'),
-    getLocations: () => fetchWithAuth<any[]>('/master/locations'),
-    getRates: () => fetchWithAuth<any[]>('/master/rates'),
-    createRate: (data: any) => fetchWithAuth<any>('/master/rates', { method: 'POST', body: JSON.stringify(data) }),
+    getCustomers: () => fetchWithAuth<any[]>('/customers'),
+    createCustomer: (data: any) => fetchWithAuth<any>('/customers', { method: 'POST', body: JSON.stringify(data) }),
+    getVehicles: () => fetchWithAuth<any[]>('/vehicles'),
+    createVehicle: (data: any) => fetchWithAuth<any>('/vehicles', { method: 'POST', body: JSON.stringify(data) }),
+    getDrivers: () => fetchWithAuth<any[]>('/drivers'),
+    createDriver: (data: any) => fetchWithAuth<any>('/drivers', { method: 'POST', body: JSON.stringify(data) }),
+    getSources: () => fetchWithAuth<any[]>('/sources'),
+    getMaterials: () => fetchWithAuth<any[]>('/materials'),
+    getLocations: () => fetchWithAuth<any[]>('/locations'),
+    getRates: () => fetchWithAuth<any[]>('/rates'),
+    createRate: (data: any) => fetchWithAuth<any>('/rates', { method: 'POST', body: JSON.stringify(data) }),
   },
 
   // Trips
@@ -134,21 +134,21 @@ export const apiClient = {
 
   // Finance & Ledger
   finance: {
-    getInvoices: () => fetchWithAuth<any[]>('/finance/invoices'),
+    getInvoices: () => fetchWithAuth<any[]>('/invoices'),
     generateInvoice: (invoiceData: any) =>
-      fetchWithAuth<any>('/finance/invoices', { method: 'POST', body: JSON.stringify(invoiceData) }),
-    getPayments: () => fetchWithAuth<any[]>('/finance/payments'),
+      fetchWithAuth<any>('/invoices', { method: 'POST', body: JSON.stringify(invoiceData) }),
+    getPayments: () => fetchWithAuth<any[]>('/payments'),
     recordPayment: (paymentData: any) =>
-      fetchWithAuth<any>('/finance/payments', { method: 'POST', body: JSON.stringify(paymentData) }),
+      fetchWithAuth<any>('/payments', { method: 'POST', body: JSON.stringify(paymentData) }),
     reversePayment: (id: string, reason: string) =>
-      fetchWithAuth<any>(`/finance/payments/${id}/reverse`, { method: 'POST', body: JSON.stringify({ reason }) }),
-    getLedger: () => fetchWithAuth<any[]>('/finance/ledger'),
-    getAccounts: () => fetchWithAuth<any[]>('/finance/accounts'),
+      fetchWithAuth<any>(`/payments/${id}/reverse`, { method: 'POST', body: JSON.stringify({ reason }) }),
+    getLedger: () => fetchWithAuth<any[]>('/ledger/transactions'),
+    getAccounts: () => fetchWithAuth<any[]>('/accounts'),
     createContraTransfer: (transferData: any) =>
-      fetchWithAuth<any>('/finance/contra-transfer', { method: 'POST', body: JSON.stringify(transferData) }),
-    getDieselRecords: () => fetchWithAuth<any[]>('/finance/diesel'),
+      fetchWithAuth<any>('/accounts/contra-transfer', { method: 'POST', body: JSON.stringify(transferData) }),
+    getDieselRecords: () => fetchWithAuth<any[]>('/fleet-expenses/diesel'),
     recordDiesel: (dieselData: any) =>
-      fetchWithAuth<any>('/finance/diesel', { method: 'POST', body: JSON.stringify(dieselData) }),
+      fetchWithAuth<any>('/fleet-expenses/diesel', { method: 'POST', body: JSON.stringify(dieselData) }),
   },
 
   // Dashboards & Analytics

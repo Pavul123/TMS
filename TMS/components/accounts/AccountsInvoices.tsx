@@ -17,11 +17,18 @@ export function AccountsInvoices() {
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // New Invoice generator state
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(customers[0]?.id || '');
   const [selectedTripIds, setSelectedTripIds] = useState<string[]>([]);
-  const [gstPercent, setGstPercent] = useState<number>(5);
+  const [isManualItem, setIsManualItem] = useState(false);
+  const [manualDescription, setManualDescription] = useState('20mm Aggregate Supply & Transportation');
+  const [manualVehicle, setManualVehicle] = useState('TN 58 AB 2345');
+  const [manualQty, setManualQty] = useState(25);
+  const [manualUnit, setManualUnit] = useState('Ton');
+  const [manualRate, setManualRate] = useState(480);
+  const [gstPercent, setGstPercent] = useState<number>(12);
   const [invoiceDate, setInvoiceDate] = useState(
     new Date().toLocaleDateString('en-IN', {
       day: '2-digit',
@@ -33,23 +40,60 @@ export function AccountsInvoices() {
   const [error, setError] = useState('');
 
   // Uninvoiced delivered trips for selected customer
+  const currentCustomer = customers.find((c) => c.id === selectedCustomerId);
   const eligibleTrips = trips.filter(
     (t) =>
-      t.customerId === selectedCustomerId &&
-      (t.status === 'DELIVERED' || t.status === 'COMPLETED') &&
+      (t.customerId === selectedCustomerId || (currentCustomer && t.customerName?.toLowerCase() === currentCustomer.name?.toLowerCase())) &&
       !t.invoiceId
   );
 
   const selectedTrips = eligibleTrips.filter((t) => selectedTripIds.includes(t.id));
-  const subtotal = selectedTrips.reduce((sum, t) => sum + (t.totalAmount || 0), 0);
+  const tripsSubtotal = selectedTrips.reduce((sum, t) => sum + (t.totalAmount || (t.quantity || 0) * (t.appliedRate || 0)), 0);
+  const manualSubtotal = isManualItem ? Math.round(Number(manualQty || 0) * Number(manualRate || 0)) : 0;
+  const subtotal = tripsSubtotal + manualSubtotal;
   const gstAmount = Math.round((subtotal * gstPercent) / 100);
   const totalAmount = subtotal + gstAmount;
 
+  // Helper to count unbilled trips per customer
+  const getCustomerUnbilledCount = (cust: typeof customers[0]) => {
+    return trips.filter(
+      (t) => (t.customerId === cust.id || t.customerName?.toLowerCase() === cust.name?.toLowerCase()) && !t.invoiceId
+    ).length;
+  };
+
   const handleOpenGenerate = () => {
-    setSelectedCustomerId(customers[0]?.id || '');
-    setSelectedTripIds([]);
+    // Default to first customer with unbilled trips if available, otherwise first customer
+    const customerWithTrips = customers.find((c) => getCustomerUnbilledCount(c) > 0);
+    const targetCust = customerWithTrips || customers[0];
+    const targetCustId = targetCust?.id || '';
+    setSelectedCustomerId(targetCustId);
+
+    const availableTrips = trips.filter(
+      (t) =>
+        (t.customerId === targetCustId || (targetCust && t.customerName?.toLowerCase() === targetCust.name?.toLowerCase())) &&
+        !t.invoiceId
+    );
+
+    setSelectedTripIds(availableTrips.map((t) => t.id));
+    setIsManualItem(availableTrips.length === 0);
+    setGstPercent(12);
+    setNotes('');
     setError('');
     setIsGenerateModalOpen(true);
+  };
+
+  const handleCustomerChange = (newCustId: string) => {
+    setSelectedCustomerId(newCustId);
+    const cust = customers.find((c) => c.id === newCustId);
+    const available = trips.filter(
+      (t) =>
+        (t.customerId === newCustId || (cust && t.customerName?.toLowerCase() === cust.name?.toLowerCase())) &&
+        !t.invoiceId
+    );
+    setSelectedTripIds(available.map((t) => t.id));
+    if (available.length === 0) {
+      setIsManualItem(true);
+    }
   };
 
   const handleToggleTrip = (tripId: string) => {
@@ -60,14 +104,20 @@ export function AccountsInvoices() {
     }
   };
 
-  const handleGenerateInvoice = () => {
-    if (selectedTripIds.length === 0) {
-      setError('Please select at least one delivered trip to invoice.');
+  const handleGenerateInvoice = async () => {
+    if (totalAmount <= 0) {
+      setError('Please select at least one delivered trip or add a direct billing line item with amount greater than 0.');
       return;
     }
 
     const customer = customers.find((c) => c.id === selectedCustomerId);
-    if (!customer) return;
+    if (!customer) {
+      setError('Customer account not found.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError('');
 
     const nextInvId = generateNextId('INV', invoices.map((i) => i.id));
     const invNumber = `INV-2026-${String(invoices.length + 1).padStart(4, '0')}`;
@@ -82,6 +132,19 @@ export function AccountsInvoices() {
       rate: t.appliedRate,
       amount: t.totalAmount || t.quantity * t.appliedRate,
     }));
+
+    if (isManualItem && manualSubtotal > 0) {
+      lineItems.push({
+        tripId: 'DIRECT-ITEM-1',
+        date: invoiceDate,
+        vehicle: manualVehicle || 'TN 58 AB 2345',
+        material: manualDescription || '20mm Aggregate Supply & Transportation',
+        quantity: Number(manualQty) || 1,
+        unit: manualUnit || 'Ton',
+        rate: Number(manualRate) || 0,
+        amount: manualSubtotal,
+      });
+    }
 
     const newInvoice: Invoice = {
       id: nextInvId,
@@ -102,10 +165,42 @@ export function AccountsInvoices() {
       notes,
     };
 
-    createInvoice(newInvoice, 'Anitha S');
-    setIsConfirmOpen(false);
-    setIsGenerateModalOpen(false);
-    setSelectedInvoice(newInvoice);
+    createInvoice(newInvoice, 'K. Venkat (Accounts)');
+
+    // Backend synchronization
+    try {
+      const { apiClient } = await import('../../lib/api');
+      const isoDate = new Date().toISOString().split('T')[0];
+      const manualItemsPayload = isManualItem && manualSubtotal > 0 ? [{
+        description: manualDescription,
+        vehicle: manualVehicle || 'TN 58 AB 2345',
+        quantity: Number(manualQty) || 1,
+        unit: manualUnit || 'Ton',
+        rate: Number(manualRate) || 0,
+        amount: manualSubtotal,
+        date: isoDate,
+      }] : [];
+
+      await apiClient.finance.generateInvoice({
+        date: isoDate,
+        dueDate: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+        customerId: customer.id,
+        customerName: customer.name,
+        customerAddress: customer.address,
+        customerGstin: customer.gstin,
+        taxRate: gstPercent,
+        tripIds: selectedTripIds,
+        manualItems: manualItemsPayload,
+        notes,
+      });
+    } catch (e: any) {
+      console.warn('Backend sync note:', e?.message || e);
+    } finally {
+      setIsSubmitting(false);
+      setIsConfirmOpen(false);
+      setIsGenerateModalOpen(false);
+      setSelectedInvoice(newInvoice);
+    }
   };
 
   return (
@@ -128,7 +223,7 @@ export function AccountsInvoices() {
               <th>Invoice Number</th>
               <th>Date</th>
               <th>Customer</th>
-              <th>Trips Included</th>
+              <th>Trips / Items</th>
               <th>Subtotal</th>
               <th>GST</th>
               <th>Total Amount</th>
@@ -152,7 +247,7 @@ export function AccountsInvoices() {
                 <td>{inv.date}</td>
                 <td className="font-semibold text-[#16425B]">{inv.customerName}</td>
                 <td className="text-xs text-[#5A6E7F]">
-                  {inv.lineItems.map((li) => li.tripId).join(', ') || 'Direct order'}
+                  {inv.lineItems.map((li) => li.tripId || li.material).join(', ') || 'Direct order'}
                 </td>
                 <td>{formatCurrency(inv.subtotal)}</td>
                 <td className="text-xs text-[#5A6E7F]">{formatCurrency(inv.gstAmount)}</td>
@@ -176,7 +271,7 @@ export function AccountsInvoices() {
             {invoices.length === 0 && (
               <tr>
                 <td colSpan={11} className="text-center py-10 text-[#5A6E7F]">
-                  No invoices generated yet. Click Generate Invoice to bill delivered trips.
+                  No invoices generated yet. Click Generate Invoice to bill delivered trips or add direct billing.
                 </td>
               </tr>
             )}
@@ -189,7 +284,7 @@ export function AccountsInvoices() {
         isOpen={isGenerateModalOpen}
         onClose={() => setIsGenerateModalOpen(false)}
         title="Generate Commercial Tax Invoice"
-        subtitle="Consolidate completed trips into an official invoice"
+        subtitle="Consolidate completed trips or add direct line items into an official invoice"
         maxWidth="max-w-2xl"
       >
         {error && (
@@ -204,17 +299,17 @@ export function AccountsInvoices() {
               <label className="block text-xs font-bold text-[#16425B] mb-1">Customer Account</label>
               <select
                 value={selectedCustomerId}
-                onChange={(e) => {
-                  setSelectedCustomerId(e.target.value);
-                  setSelectedTripIds([]);
-                }}
+                onChange={(e) => handleCustomerChange(e.target.value)}
                 className="tms-input"
               >
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.id})
-                  </option>
-                ))}
+                {customers.map((c) => {
+                  const unbilled = getCustomerUnbilledCount(c);
+                  return (
+                    <option key={c.id} value={c.id}>
+                      {c.name} ({c.id}) · {unbilled} {unbilled === 1 ? 'trip' : 'trips'} available
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -229,56 +324,152 @@ export function AccountsInvoices() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-[#16425B] mb-1">
-              Select Delivered Trips for Billing ({eligibleTrips.length} Available)
-            </label>
-            <div className="border border-[#D9DBD6] rounded-lg max-h-48 overflow-y-auto divide-y divide-[#D9DBD6]">
-              {eligibleTrips.map((trip) => {
-                const isChecked = selectedTripIds.includes(trip.id);
-                return (
-                  <div
-                    key={trip.id}
-                    onClick={() => handleToggleTrip(trip.id)}
-                    className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${
-                      isChecked ? 'bg-[#e8f1f5]' : 'hover:bg-[#f8faf5]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {}}
-                        className="rounded text-[#2F668F]"
-                      />
-                      <div>
-                        <p className="font-bold text-[#16425B]">
-                          {trip.id} · {trip.material} ({trip.quantity} {trip.unit})
-                        </p>
-                        <p className="text-[11px] text-[#5A6E7F]">
-                          Vehicle: {trip.vehicleRegistration} · Delivered on {trip.date} · Rate: ₹{trip.appliedRate}/{trip.unit}
-                        </p>
-                      </div>
-                    </div>
-                    <strong className="text-xs text-[#16425B]">
-                      {formatCurrency(trip.totalAmount || 0)}
-                    </strong>
-                  </div>
-                );
-              })}
+          {/* DELIVERED TRIPS SELECTION */}
+          {eligibleTrips.length > 0 && (
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-bold text-[#16425B]">
+                  Select Delivered Trips for Billing ({eligibleTrips.length} Available)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsManualItem(!isManualItem)}
+                  className="text-[11px] text-[#2F668F] font-semibold hover:underline"
+                >
+                  {isManualItem ? '– Remove direct line item' : '+ Add direct manual line item'}
+                </button>
+              </div>
 
-              {eligibleTrips.length === 0 && (
-                <div className="p-6 text-center text-[#5A6E7F]">
-                  No unbilled delivered trips for this customer.
-                </div>
-              )}
+              <div className="border border-[#D9DBD6] rounded-lg max-h-44 overflow-y-auto divide-y divide-[#D9DBD6]">
+                {eligibleTrips.map((trip) => {
+                  const isChecked = selectedTripIds.includes(trip.id);
+                  return (
+                    <div
+                      key={trip.id}
+                      onClick={() => handleToggleTrip(trip.id)}
+                      className={`p-3 flex items-center justify-between cursor-pointer transition-colors ${
+                        isChecked ? 'bg-[#e8f1f5]' : 'hover:bg-[#f8faf5]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => {}}
+                          className="rounded text-[#2F668F]"
+                        />
+                        <div>
+                          <p className="font-bold text-[#16425B]">
+                            {trip.id} · {trip.material} ({trip.quantity} {trip.unit})
+                          </p>
+                          <p className="text-[11px] text-[#5A6E7F]">
+                            Vehicle: {trip.vehicleRegistration} · Delivered on {trip.date} · Rate: ₹{trip.appliedRate}/{trip.unit}
+                          </p>
+                        </div>
+                      </div>
+                      <strong className="text-xs text-[#16425B]">
+                        {formatCurrency(trip.totalAmount || (trip.quantity || 0) * (trip.appliedRate || 0))}
+                      </strong>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* DIRECT MANUAL BILLING ITEM SECTION */}
+          {(eligibleTrips.length === 0 || isManualItem) && (
+            <div className="p-3 bg-[#f2f7fa] border border-[#bcd6e5] rounded-lg space-y-3">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="font-bold text-[#16425B] text-xs">
+                    {eligibleTrips.length === 0 ? 'Direct Invoice Line Item (No Trips Logged)' : 'Additional Direct Line Item'}
+                  </span>
+                  <p className="text-[11px] text-[#5A6E7F]">
+                    Enter material, quantity, and agreed rate for official invoice generation.
+                  </p>
+                </div>
+                {eligibleTrips.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsManualItem(false)}
+                    className="text-xs text-red-600 font-bold hover:underline"
+                  >
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-bold text-[#16425B] mb-0.5">Item Description / Material</label>
+                  <input
+                    type="text"
+                    value={manualDescription}
+                    onChange={(e) => setManualDescription(e.target.value)}
+                    className="tms-input text-xs"
+                    placeholder="e.g. 20mm Aggregate Supply & Transportation"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#16425B] mb-0.5">Vehicle Reg (Optional)</label>
+                  <input
+                    type="text"
+                    value={manualVehicle}
+                    onChange={(e) => setManualVehicle(e.target.value)}
+                    className="tms-input text-xs"
+                    placeholder="e.g. TN 58 AB 2345"
+                  />
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#16425B] mb-0.5">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={manualQty}
+                      onChange={(e) => setManualQty(Number(e.target.value))}
+                      className="tms-input text-xs"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#16425B] mb-0.5">Unit</label>
+                    <select
+                      value={manualUnit}
+                      onChange={(e) => setManualUnit(e.target.value)}
+                      className="tms-input text-xs"
+                    >
+                      <option value="Ton">Ton</option>
+                      <option value="Load">Load</option>
+                      <option value="Cu.M">Cu.M</option>
+                      <option value="Trip">Trip</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold text-[#16425B] mb-0.5">Rate (₹)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={manualRate}
+                      onChange={(e) => setManualRate(Number(e.target.value))}
+                      className="tms-input text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-between items-center text-xs pt-1 border-t border-[#bcd6e5]">
+                <span className="text-[#5A6E7F]">Item Amount:</span>
+                <strong className="text-[#16425B]">{formatCurrency(manualSubtotal)}</strong>
+              </div>
+            </div>
+          )}
 
           {/* TOTALS COMPUTATION */}
           <div className="p-4 bg-[#f8faf5] border border-[#D9DBD6] rounded-lg space-y-2">
             <div className="flex justify-between">
-              <span className="text-[#5A6E7F]">Subtotal ({selectedTrips.length} Trips):</span>
+              <span className="text-[#5A6E7F]">
+                Subtotal ({selectedTrips.length} Trips {isManualItem && manualSubtotal > 0 ? '+ Direct Item' : ''}):
+              </span>
               <strong className="text-[#16425B]">{formatCurrency(subtotal)}</strong>
             </div>
             <div className="flex justify-between items-center">
@@ -286,12 +477,12 @@ export function AccountsInvoices() {
               <select
                 value={gstPercent}
                 onChange={(e) => setGstPercent(Number(e.target.value))}
-                className="tms-input w-24 h-7 text-xs"
+                className="tms-input w-28 h-7 text-xs"
               >
-                <option value={0}>0%</option>
-                <option value={5}>5% (Transport GST)</option>
-                <option value={12}>12%</option>
-                <option value={18}>18%</option>
+                <option value={0}>0% (Exempted)</option>
+                <option value={5}>5% (Transport GTA)</option>
+                <option value={12}>12% (Standard Supply)</option>
+                <option value={18}>18% (Commercial GST)</option>
               </select>
             </div>
             <div className="flex justify-between">
@@ -310,7 +501,7 @@ export function AccountsInvoices() {
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Work order #WO-9982"
+              placeholder="e.g. Work order #WO-112"
               className="tms-input"
             />
           </div>
@@ -325,11 +516,11 @@ export function AccountsInvoices() {
             </button>
             <button
               type="button"
-              disabled={selectedTripIds.length === 0}
+              disabled={totalAmount <= 0 || isSubmitting}
               onClick={() => setIsConfirmOpen(true)}
               className="btn-primary"
             >
-              Generate Invoice ({formatCurrency(totalAmount)})
+              {isSubmitting ? 'Generating...' : `Generate Invoice (${formatCurrency(totalAmount)})`}
             </button>
           </div>
         </div>
@@ -374,10 +565,15 @@ export function AccountsInvoices() {
                 <strong className="text-sm font-bold text-[#16425B] block mt-1">
                   {selectedInvoice.customerName}
                 </strong>
-                <p className="text-[#5A6E7F] mt-0.5">{selectedInvoice.customerAddress}</p>
+                <p className="text-[#5A6E7F] mt-0.5">{selectedInvoice.customerAddress || 'Project Site Office'}</p>
                 {selectedInvoice.customerGstin && (
                   <p className="font-mono text-[11px] mt-1 text-[#16425B]">
                     GSTIN: {selectedInvoice.customerGstin}
+                  </p>
+                )}
+                {selectedInvoice.notes && (
+                  <p className="text-[11px] text-[#5A6E7F] mt-1">
+                    Ref: <strong>{selectedInvoice.notes}</strong>
                   </p>
                 )}
               </div>
@@ -404,7 +600,7 @@ export function AccountsInvoices() {
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="bg-[#f8faf5] border-b border-[#D9DBD6]">
                   <tr>
-                    <th className="p-2.5 font-bold text-[#5A6E7F]">Trip Ref</th>
+                    <th className="p-2.5 font-bold text-[#5A6E7F]">Trip / Ref</th>
                     <th className="p-2.5 font-bold text-[#5A6E7F]">Date</th>
                     <th className="p-2.5 font-bold text-[#5A6E7F]">Vehicle</th>
                     <th className="p-2.5 font-bold text-[#5A6E7F]">Material</th>
@@ -416,7 +612,7 @@ export function AccountsInvoices() {
                 <tbody className="divide-y divide-[#edf1f5]">
                   {selectedInvoice.lineItems.map((item, idx) => (
                     <tr key={idx}>
-                      <td className="p-2.5 font-bold text-[#2F668F]">{item.tripId}</td>
+                      <td className="p-2.5 font-bold text-[#2F668F]">{item.tripId || `ITEM-${idx + 1}`}</td>
                       <td className="p-2.5">{item.date}</td>
                       <td className="p-2.5 font-semibold">{item.vehicle}</td>
                       <td className="p-2.5">{item.material}</td>
@@ -477,7 +673,7 @@ export function AccountsInvoices() {
       <ConfirmDialog
         isOpen={isConfirmOpen}
         title="Confirm Invoice Generation?"
-        message={`This will issue ${formatCurrency(totalAmount)} to ${customers.find((c) => c.id === selectedCustomerId)?.name}. A credit receivable transaction will be created.`}
+        message={`This will issue ${formatCurrency(totalAmount)} to ${customers.find((c) => c.id === selectedCustomerId)?.name}. A credit receivable transaction will be created in Central Ledger.`}
         confirmLabel="Generate Invoice"
         onCancel={() => setIsConfirmOpen(false)}
         onConfirm={handleGenerateInvoice}

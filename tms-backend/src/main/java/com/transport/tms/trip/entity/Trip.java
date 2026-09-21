@@ -138,8 +138,7 @@ public class Trip {
 
     @Version
     @Column(nullable = false)
-    @Builder.Default
-    private Long version = 0L;
+    private Long version;
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
