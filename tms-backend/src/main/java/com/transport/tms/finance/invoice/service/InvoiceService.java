@@ -214,4 +214,52 @@ public class InvoiceService {
         return invoiceRepository.findById(id)
                 .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Invoice", "id", id));
     }
+
+    @Transactional
+    public Invoice updateInvoiceStatus(String id, String status) {
+        Invoice invoice = getInvoiceById(id);
+        invoice.setStatus(status);
+        return invoiceRepository.save(invoice);
+    }
+
+    @Transactional
+    public Invoice cancelInvoice(String id, String reason, UserPrincipal currentUser) {
+        Invoice invoice = getInvoiceById(id);
+        if ("CANCELLED".equalsIgnoreCase(invoice.getStatus())) {
+            return invoice; // Idempotent return
+        }
+        if ("PAID".equalsIgnoreCase(invoice.getStatus())) {
+            throw new Exceptions.BadRequestException("Cannot cancel paid invoice " + id + ". Please reverse payments first.");
+        }
+
+        // Unlink associated trips
+        if (invoice.getItems() != null) {
+            for (InvoiceItem item : invoice.getItems()) {
+                if (item.getTripId() != null && item.getTripId().startsWith("TRIP-")) {
+                    tripRepository.findById(item.getTripId()).ifPresent(trip -> {
+                        trip.setInvoiceId(null);
+                        tripRepository.save(trip);
+                    });
+                }
+            }
+        }
+
+        invoice.setStatus("CANCELLED");
+        Invoice saved = invoiceRepository.save(invoice);
+
+        String performedBy = currentUser != null ? currentUser.getFullName() : "Accounts Admin";
+        ledgerService.recordExpense(
+                "CUSTOMER",
+                invoice.getCustomerId(),
+                invoice.getCustomerName(),
+                "INVOICE_CANCELLATION",
+                invoice.getTotalAmount(),
+                "REVERSAL",
+                invoice.getId(),
+                "Invoice Cancelled: " + (reason != null ? reason : "Administrative cancellation"),
+                performedBy
+        );
+
+        return saved;
+    }
 }

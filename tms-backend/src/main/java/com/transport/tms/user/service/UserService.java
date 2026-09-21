@@ -39,21 +39,28 @@ public class UserService {
     }
 
     @Transactional
-    public AuthDto.UserDto createUser(User userRequest, String roleName, String rawPassword) {
-        if (userRepository.existsByUsername(userRequest.getUsername())) {
-            throw new Exceptions.BadRequestException("Username already exists: " + userRequest.getUsername());
+    public AuthDto.UserDto createUser(AuthDto.CreateUserRequest request) {
+        if (userRepository.existsByUsername(request.getUsername().toLowerCase().trim())) {
+            throw new Exceptions.BadRequestException("Username already exists: " + request.getUsername());
         }
 
-        Role role = roleRepository.findByName(roleName)
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Role", "name", roleName));
+        String roleName = request.getRole().toUpperCase().trim();
+        if (roleName.startsWith("ROLE_")) {
+            roleName = roleName.substring(5);
+        }
+
+        final String lookupRole = roleName;
+        Role role = roleRepository.findByName(lookupRole)
+                .orElseGet(() -> roleRepository.findById("ROLE_" + lookupRole)
+                        .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Role", "name", lookupRole)));
 
         User user = User.builder()
-                .id("USR-" + System.currentTimeMillis() % 100000)
-                .username(userRequest.getUsername().toLowerCase().trim())
-                .passwordHash(passwordEncoder.encode(rawPassword))
-                .fullName(userRequest.getFullName())
-                .email(userRequest.getEmail())
-                .phone(userRequest.getPhone())
+                .id("USR-" + (System.currentTimeMillis() % 90000 + 10000))
+                .username(request.getUsername().toLowerCase().trim())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .phone(request.getPhone())
                 .role(role)
                 .status("ACTIVE")
                 .build();
@@ -63,11 +70,47 @@ public class UserService {
     }
 
     @Transactional
+    public AuthDto.UserDto updateUser(String id, AuthDto.UpdateUserRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("User", "id", id));
+
+        if (request.getFullName() != null) user.setFullName(request.getFullName());
+        if (request.getEmail() != null) user.setEmail(request.getEmail());
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+        if (request.getStatus() != null) user.setStatus(request.getStatus());
+        if (request.getPassword() != null && !request.getPassword().isBlank()) {
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        }
+
+        if (request.getRole() != null && !request.getRole().isBlank()) {
+            String roleName = request.getRole().toUpperCase().trim();
+            if (roleName.startsWith("ROLE_")) {
+                roleName = roleName.substring(5);
+            }
+            final String lookupRole = roleName;
+            Role role = roleRepository.findByName(lookupRole)
+                    .orElseGet(() -> roleRepository.findById("ROLE_" + lookupRole)
+                            .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Role", "name", lookupRole)));
+            user.setRole(role);
+        }
+
+        return mapToDto(userRepository.save(user));
+    }
+
+    @Transactional
     public AuthDto.UserDto updateUserStatus(String id, String status) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new Exceptions.ResourceNotFoundException("User", "id", id));
         user.setStatus(status);
         return mapToDto(userRepository.save(user));
+    }
+
+    @Transactional
+    public void deleteUser(String id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("User", "id", id));
+        user.setStatus("INACTIVE");
+        userRepository.save(user);
     }
 
     private AuthDto.UserDto mapToDto(User user) {

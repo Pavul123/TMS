@@ -40,14 +40,14 @@ public class VehicleController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'VEHICLE_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'VEHICLE_MANAGE')")
     @Operation(summary = "Register a new vehicle")
     public ResponseEntity<ApiResponse<Vehicle>> createVehicle(@Valid @RequestBody Vehicle vehicle) {
         return ResponseEntity.ok(ApiResponse.ok("Vehicle created successfully", vehicleService.createVehicle(vehicle)));
     }
 
     @PutMapping("/{registration}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'VEHICLE_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'VEHICLE_MANAGE')")
     @Operation(summary = "Update vehicle details")
     public ResponseEntity<ApiResponse<Vehicle>> updateVehicle(
             @PathVariable String registration,
@@ -56,11 +56,19 @@ public class VehicleController {
     }
 
     @PatchMapping("/{registration}/status")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'VEHICLE_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'VEHICLE_MANAGE')")
     @Operation(summary = "Update vehicle operational status")
     public ResponseEntity<ApiResponse<Vehicle>> updateVehicleStatus(
             @PathVariable String registration,
             @RequestParam String status) {
         return ResponseEntity.ok(ApiResponse.ok("Vehicle status updated", vehicleService.updateVehicleStatus(registration, status)));
+    }
+
+    @DeleteMapping("/{registration}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'VEHICLE_MANAGE')")
+    @Operation(summary = "Deactivate/delete vehicle")
+    public ResponseEntity<ApiResponse<Void>> deleteVehicle(@PathVariable String registration) {
+        vehicleService.deleteVehicle(registration);
+        return ResponseEntity.ok(ApiResponse.ok("Vehicle deactivated successfully", null));
     }
 }

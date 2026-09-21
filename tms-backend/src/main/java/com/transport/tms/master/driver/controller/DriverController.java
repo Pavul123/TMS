@@ -40,18 +40,26 @@ public class DriverController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'DRIVER_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'DRIVER_MANAGE')")
     @Operation(summary = "Register a new driver")
     public ResponseEntity<ApiResponse<Driver>> createDriver(@Valid @RequestBody Driver driver) {
         return ResponseEntity.ok(ApiResponse.ok("Driver created successfully", driverService.createDriver(driver)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'DRIVER_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'DRIVER_MANAGE')")
     @Operation(summary = "Update driver details")
     public ResponseEntity<ApiResponse<Driver>> updateDriver(
             @PathVariable String id,
             @Valid @RequestBody Driver driver) {
         return ResponseEntity.ok(ApiResponse.ok("Driver updated successfully", driverService.updateDriver(id, driver)));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'DRIVER_MANAGE')")
+    @Operation(summary = "Deactivate/delete driver")
+    public ResponseEntity<ApiResponse<Void>> deleteDriver(@PathVariable String id) {
+        driverService.deleteDriver(id);
+        return ResponseEntity.ok(ApiResponse.ok("Driver deactivated successfully", null));
     }
 }

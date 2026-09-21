@@ -158,4 +158,10 @@ public class PaymentService {
     public List<Payment> getPaymentsByCustomer(String customerId) {
         return paymentRepository.findByCustomerIdOrderByDateDesc(customerId);
     }
+
+    @Transactional(readOnly = true)
+    public Payment getPaymentById(String paymentId) {
+        return paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Payment", "id", paymentId));
+    }
 }

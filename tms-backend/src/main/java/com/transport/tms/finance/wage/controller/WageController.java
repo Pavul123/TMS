@@ -30,7 +30,7 @@ public class WageController {
         return ResponseEntity.ok(ApiResponse.ok(wageService.getAllWages()));
     }
 
-    @PostMapping("/disburse")
+    @PostMapping({"/disburse", "/pay", "/settle"})
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'WAGE_MANAGE')")
     @Operation(summary = "Calculate and disburse monthly wage (Base + Overtime + Allowance - Advances)")
     public ResponseEntity<ApiResponse<WorkerWage>> disburseWage(
@@ -46,7 +46,7 @@ public class WageController {
         return ResponseEntity.ok(ApiResponse.ok(wageService.getAllAdvances()));
     }
 
-    @PostMapping("/advances")
+    @PostMapping({"/advances", "/advance"})
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'WAGE_MANAGE')")
     @Operation(summary = "Issue advance cash to driver or worker")
     public ResponseEntity<ApiResponse<WageAdvance>> issueAdvance(

@@ -44,18 +44,26 @@ public class CustomerController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'CUSTOMER_MANAGE')")
-    @Operation(summary = "Create customer (Manager/Admin only)")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'CUSTOMER_MANAGE')")
+    @Operation(summary = "Create customer (Manager/Accounts/Admin)")
     public ResponseEntity<ApiResponse<Customer>> createCustomer(@Valid @RequestBody Customer customer) {
         return ResponseEntity.ok(ApiResponse.ok("Customer created successfully", customerService.createCustomer(customer)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'CUSTOMER_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'CUSTOMER_MANAGE')")
     @Operation(summary = "Update customer details")
     public ResponseEntity<ApiResponse<Customer>> updateCustomer(
             @PathVariable String id,
             @Valid @RequestBody Customer customer) {
         return ResponseEntity.ok(ApiResponse.ok("Customer updated successfully", customerService.updateCustomer(id, customer)));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'CUSTOMER_MANAGE')")
+    @Operation(summary = "Deactivate/delete customer")
+    public ResponseEntity<ApiResponse<Void>> deleteCustomer(@PathVariable String id) {
+        customerService.deleteCustomer(id);
+        return ResponseEntity.ok(ApiResponse.ok("Customer deactivated successfully", null));
     }
 }

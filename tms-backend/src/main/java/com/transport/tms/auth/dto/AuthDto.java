@@ -51,4 +51,34 @@ public class AuthDto {
         private String status;
         private Set<String> permissions;
     }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CreateUserRequest {
+        @NotBlank(message = "Username is required")
+        private String username;
+        @NotBlank(message = "Full name is required")
+        private String fullName;
+        private String email;
+        private String phone;
+        @NotBlank(message = "Role is required")
+        private String role;
+        @NotBlank(message = "Password is required")
+        private String password;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateUserRequest {
+        private String fullName;
+        private String email;
+        private String phone;
+        private String role;
+        private String status;
+        private String password;
+    }
 }

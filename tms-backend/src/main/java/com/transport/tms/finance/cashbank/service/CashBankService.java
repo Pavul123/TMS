@@ -36,6 +36,40 @@ public class CashBankService {
     }
 
     @Transactional
+    public CashBankAccount createAccount(CashBankAccount account) {
+        if (account.getId() == null || account.getId().isBlank()) {
+            account.setId("ACC-" + String.format("%03d", (int)(Math.random() * 900) + 100));
+        }
+        if (account.getBalance() == null) {
+            account.setBalance(BigDecimal.ZERO);
+        }
+        if (account.getStatus() == null) {
+            account.setStatus("ACTIVE");
+        }
+        return accountRepository.save(account);
+    }
+
+    @Transactional
+    public CashBankAccount updateAccount(String id, CashBankAccount request) {
+        CashBankAccount account = getAccountById(id);
+        if (request.getAccountName() != null) account.setAccountName(request.getAccountName());
+        if (request.getAccountType() != null) account.setAccountType(request.getAccountType());
+        if (request.getBankName() != null) account.setBankName(request.getBankName());
+        if (request.getAccountNumber() != null) account.setAccountNumber(request.getAccountNumber());
+        if (request.getIfsc() != null) account.setIfsc(request.getIfsc());
+        if (request.getBranch() != null) account.setBranch(request.getBranch());
+        if (request.getStatus() != null) account.setStatus(request.getStatus());
+        return accountRepository.save(account);
+    }
+
+    @Transactional
+    public void deleteAccount(String id) {
+        CashBankAccount account = getAccountById(id);
+        account.setStatus("INACTIVE");
+        accountRepository.save(account);
+    }
+
+    @Transactional
     public void creditAccount(String accountId, BigDecimal amount) {
         CashBankAccount account = getAccountById(accountId);
         account.setBalance(account.getBalance().add(amount));

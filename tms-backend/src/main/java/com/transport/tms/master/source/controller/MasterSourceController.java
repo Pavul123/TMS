@@ -32,10 +32,25 @@ public class MasterSourceController {
     }
 
     @PostMapping("/sources")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS')")
     @Operation(summary = "Create source / crusher")
     public ResponseEntity<ApiResponse<Source>> createSource(@Valid @RequestBody Source source) {
         return ResponseEntity.ok(ApiResponse.ok("Source created", masterSourceService.createSource(source)));
+    }
+
+    @PutMapping("/sources/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS')")
+    @Operation(summary = "Update source / crusher")
+    public ResponseEntity<ApiResponse<Source>> updateSource(@PathVariable String id, @Valid @RequestBody Source source) {
+        return ResponseEntity.ok(ApiResponse.ok("Source updated", masterSourceService.updateSource(id, source)));
+    }
+
+    @DeleteMapping("/sources/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Delete source / crusher")
+    public ResponseEntity<ApiResponse<Void>> deleteSource(@PathVariable String id) {
+        masterSourceService.deleteSource(id);
+        return ResponseEntity.ok(ApiResponse.ok("Source deleted successfully", null));
     }
 
     // Materials
@@ -46,10 +61,25 @@ public class MasterSourceController {
     }
 
     @PostMapping("/materials")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS')")
     @Operation(summary = "Create material")
     public ResponseEntity<ApiResponse<Material>> createMaterial(@Valid @RequestBody Material material) {
         return ResponseEntity.ok(ApiResponse.ok("Material created", masterSourceService.createMaterial(material)));
+    }
+
+    @PutMapping("/materials/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS')")
+    @Operation(summary = "Update material")
+    public ResponseEntity<ApiResponse<Material>> updateMaterial(@PathVariable String id, @Valid @RequestBody Material material) {
+        return ResponseEntity.ok(ApiResponse.ok("Material updated", masterSourceService.updateMaterial(id, material)));
+    }
+
+    @DeleteMapping("/materials/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Delete material")
+    public ResponseEntity<ApiResponse<Void>> deleteMaterial(@PathVariable String id) {
+        masterSourceService.deleteMaterial(id);
+        return ResponseEntity.ok(ApiResponse.ok("Material deleted successfully", null));
     }
 
     // Locations
@@ -60,10 +90,25 @@ public class MasterSourceController {
     }
 
     @PostMapping("/locations")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS')")
     @Operation(summary = "Create location")
     public ResponseEntity<ApiResponse<LocationItem>> createLocation(@Valid @RequestBody LocationItem location) {
         return ResponseEntity.ok(ApiResponse.ok("Location created", masterSourceService.createLocation(location)));
+    }
+
+    @PutMapping("/locations/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS')")
+    @Operation(summary = "Update location")
+    public ResponseEntity<ApiResponse<LocationItem>> updateLocation(@PathVariable String id, @Valid @RequestBody LocationItem location) {
+        return ResponseEntity.ok(ApiResponse.ok("Location updated", masterSourceService.updateLocation(id, location)));
+    }
+
+    @DeleteMapping("/locations/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Delete location")
+    public ResponseEntity<ApiResponse<Void>> deleteLocation(@PathVariable String id) {
+        masterSourceService.deleteLocation(id);
+        return ResponseEntity.ok(ApiResponse.ok("Location deleted successfully", null));
     }
 
     // Fuel Stations
@@ -74,9 +119,24 @@ public class MasterSourceController {
     }
 
     @PostMapping("/fuel-stations")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS')")
     @Operation(summary = "Create fuel station")
     public ResponseEntity<ApiResponse<FuelStation>> createFuelStation(@Valid @RequestBody FuelStation fuelStation) {
         return ResponseEntity.ok(ApiResponse.ok("Fuel station created", masterSourceService.createFuelStation(fuelStation)));
+    }
+
+    @PutMapping("/fuel-stations/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS')")
+    @Operation(summary = "Update fuel station")
+    public ResponseEntity<ApiResponse<FuelStation>> updateFuelStation(@PathVariable String id, @Valid @RequestBody FuelStation fuelStation) {
+        return ResponseEntity.ok(ApiResponse.ok("Fuel station updated", masterSourceService.updateFuelStation(id, fuelStation)));
+    }
+
+    @DeleteMapping("/fuel-stations/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Delete fuel station")
+    public ResponseEntity<ApiResponse<Void>> deleteFuelStation(@PathVariable String id) {
+        masterSourceService.deleteFuelStation(id);
+        return ResponseEntity.ok(ApiResponse.ok("Fuel station deleted successfully", null));
     }
 }

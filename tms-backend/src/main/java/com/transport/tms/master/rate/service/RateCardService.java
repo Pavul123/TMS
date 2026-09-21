@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 @Service
@@ -44,10 +45,28 @@ public class RateCardService {
         return BigDecimal.valueOf(750.00);
     }
 
+    @Transactional(readOnly = true)
+    public ConfiguredRate getRateById(String id) {
+        return rateRepository.findById(id)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Rate", "id", id));
+    }
+
     @Transactional
     public ConfiguredRate createRate(ConfiguredRate rate) {
         if (rate.getId() == null || rate.getId().isBlank()) {
             rate.setId("RAT-" + String.format("%03d", (int)(Math.random() * 900) + 100));
+        }
+        if (rate.getRateType() == null || rate.getRateType().isBlank()) {
+            rate.setRateType("CUSTOMER");
+        }
+        if (rate.getEffectiveFrom() == null) {
+            rate.setEffectiveFrom(LocalDate.now());
+        }
+        if (rate.getUnit() == null || rate.getUnit().isBlank()) {
+            rate.setUnit("Ton");
+        }
+        if (rate.getStatus() == null || rate.getStatus().isBlank()) {
+            rate.setStatus("ACTIVE");
         }
         return rateRepository.save(rate);
     }
@@ -61,5 +80,10 @@ public class RateCardService {
         rate.setStatus(request.getStatus());
         rate.setEffectiveFrom(request.getEffectiveFrom());
         return rateRepository.save(rate);
+    }
+
+    @Transactional
+    public void deleteRate(String id) {
+        rateRepository.deleteById(id);
     }
 }

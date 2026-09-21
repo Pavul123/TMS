@@ -35,6 +35,13 @@ public class PaymentController {
         return ResponseEntity.ok(ApiResponse.ok(paymentService.getAllPayments()));
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'ROLE_MD', 'PAYMENT_VIEW')")
+    @Operation(summary = "Get payment receipt details by ID")
+    public ResponseEntity<ApiResponse<Payment>> getPaymentById(@PathVariable String id) {
+        return ResponseEntity.ok(ApiResponse.ok(paymentService.getPaymentById(id)));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'PAYMENT_CREATE')")
     @Operation(summary = "Record customer payment and allocate against invoices")

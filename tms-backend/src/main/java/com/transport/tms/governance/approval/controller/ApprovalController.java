@@ -24,7 +24,7 @@ public class ApprovalController {
 
     private final ApprovalService approvalService;
 
-    @PostMapping("/requests")
+    @PostMapping({"/requests", "/correction-requests"})
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_WORKER', 'ROLE_ACCOUNTS', 'TRIP_EDIT_REQUEST')")
     @Operation(summary = "Submit a correction request for a locked record")
     public ResponseEntity<ApiResponse<CorrectionRequest>> submitRequest(
@@ -32,6 +32,13 @@ public class ApprovalController {
             @AuthenticationPrincipal UserPrincipal currentUser) {
         CorrectionRequest created = approvalService.submitCorrectionRequest(request, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Correction request submitted for approval", created));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MD', 'ROLE_MANAGER', 'TRIP_APPROVE')")
+    @Operation(summary = "Get all approvals in system")
+    public ResponseEntity<ApiResponse<List<CorrectionRequest>>> getAllApprovals() {
+        return ResponseEntity.ok(ApiResponse.ok(approvalService.getAllApprovals()));
     }
 
     @GetMapping("/pending")
@@ -48,26 +55,26 @@ public class ApprovalController {
         return ResponseEntity.ok(ApiResponse.ok(approvalService.getCorrectionById(id)));
     }
 
-    @PostMapping("/{id}/approve")
+    @RequestMapping(value = "/{id}/approve", method = {RequestMethod.POST, RequestMethod.PUT})
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MD', 'ROLE_MANAGER', 'TRIP_APPROVE')")
     @Operation(summary = "Approve correction and apply changes to database")
     public ResponseEntity<ApiResponse<CorrectionRequest>> approve(
             @PathVariable String id,
             @RequestBody(required = false) CorrectionDto.ReviewActionRequest body,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        String comment = body != null ? body.getComment() : "Approved by " + currentUser.getFullName();
+        String comment = body != null && body.getComment() != null ? body.getComment() : "Approved by " + currentUser.getFullName();
         CorrectionRequest approved = approvalService.approveCorrection(id, comment, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Correction approved and changes applied successfully", approved));
     }
 
-    @PostMapping("/{id}/reject")
+    @RequestMapping(value = "/{id}/reject", method = {RequestMethod.POST, RequestMethod.PUT})
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MD', 'ROLE_MANAGER', 'TRIP_APPROVE')")
     @Operation(summary = "Reject correction request without altering database")
     public ResponseEntity<ApiResponse<CorrectionRequest>> reject(
             @PathVariable String id,
             @RequestBody(required = false) CorrectionDto.ReviewActionRequest body,
             @AuthenticationPrincipal UserPrincipal currentUser) {
-        String comment = body != null ? body.getComment() : "Rejected by " + currentUser.getFullName();
+        String comment = body != null && body.getComment() != null ? body.getComment() : "Rejected by " + currentUser.getFullName();
         CorrectionRequest rejected = approvalService.rejectCorrection(id, comment, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Correction request rejected", rejected));
     }

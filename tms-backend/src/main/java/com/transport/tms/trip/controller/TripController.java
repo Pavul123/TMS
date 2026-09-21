@@ -68,4 +68,23 @@ public class TripController {
         Trip trip = tripService.updateTripStatus(id, status, comment, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Trip status updated", trip));
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_WORKER', 'TRIP_EDIT')")
+    @Operation(summary = "Update trip details")
+    public ResponseEntity<ApiResponse<Object>> updateTrip(
+            @PathVariable String id,
+            @Valid @RequestBody TripDto.CreateTripRequest request,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Object response = tripService.updateTrip(id, request, currentUser);
+        return ResponseEntity.ok(ApiResponse.ok("Trip updated successfully", response));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER')")
+    @Operation(summary = "Delete unbilled trip")
+    public ResponseEntity<ApiResponse<Void>> deleteTrip(@PathVariable String id) {
+        tripService.deleteTrip(id);
+        return ResponseEntity.ok(ApiResponse.ok("Trip deleted successfully", null));
+    }
 }

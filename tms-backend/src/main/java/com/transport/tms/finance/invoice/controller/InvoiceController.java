@@ -51,4 +51,36 @@ public class InvoiceController {
         Invoice invoice = invoiceService.generateInvoice(request, currentUser);
         return ResponseEntity.ok(ApiResponse.ok("Invoice generated successfully", invoice));
     }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS')")
+    @Operation(summary = "Update invoice payment status")
+    public ResponseEntity<ApiResponse<Invoice>> updateInvoiceStatus(
+            @PathVariable String id,
+            @RequestParam String status) {
+        Invoice invoice = invoiceService.updateInvoiceStatus(id, status);
+        return ResponseEntity.ok(ApiResponse.ok("Invoice status updated", invoice));
+    }
+
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS')")
+    @Operation(summary = "Cancel invoice, restore trip billing readiness, and record reversal")
+    public ResponseEntity<ApiResponse<Invoice>> cancelInvoice(
+            @PathVariable String id,
+            @RequestParam(required = false) String reason,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Invoice invoice = invoiceService.cancelInvoice(id, reason, currentUser);
+        return ResponseEntity.ok(ApiResponse.ok("Invoice cancelled successfully", invoice));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS')")
+    @Operation(summary = "Cancel / void invoice")
+    public ResponseEntity<ApiResponse<Invoice>> deleteInvoice(
+            @PathVariable String id,
+            @RequestParam(required = false) String reason,
+            @AuthenticationPrincipal UserPrincipal currentUser) {
+        Invoice invoice = invoiceService.cancelInvoice(id, reason, currentUser);
+        return ResponseEntity.ok(ApiResponse.ok("Invoice voided successfully", invoice));
+    }
 }

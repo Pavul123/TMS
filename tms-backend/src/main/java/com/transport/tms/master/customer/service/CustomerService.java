@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -30,8 +31,25 @@ public class CustomerService {
 
     @Transactional(readOnly = true)
     public Customer getCustomerByPhone(String phone) {
-        return customerRepository.findByPhone(phone.trim())
-                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Customer", "phone", phone));
+        if (phone == null || phone.isBlank()) {
+            throw new Exceptions.BadRequestException("Phone number is required for lookup");
+        }
+        String cleanPhone = phone.trim();
+        Optional<Customer> found = customerRepository.findByPhone(cleanPhone);
+        if (found.isPresent()) return found.get();
+        
+        List<Customer> matches = customerRepository.searchCustomers(cleanPhone);
+        if (!matches.isEmpty()) return matches.get(0);
+        
+        // Remove symbols/spaces (e.g. +91 94431 52671 -> 9443152671)
+        String digits = cleanPhone.replaceAll("[^0-9]", "");
+        if (digits.length() >= 6) {
+            String suffix = digits.substring(Math.max(0, digits.length() - 10));
+            List<Customer> digitMatches = customerRepository.searchCustomers(suffix);
+            if (!digitMatches.isEmpty()) return digitMatches.get(0);
+        }
+        
+        throw new Exceptions.ResourceNotFoundException("Customer", "phone", phone);
     }
 
     @Transactional(readOnly = true)
@@ -73,5 +91,12 @@ public class CustomerService {
         customer.setNotes(request.getNotes());
 
         return customerRepository.save(customer);
+    }
+
+    @Transactional
+    public void deleteCustomer(String id) {
+        Customer customer = getCustomerById(id);
+        customer.setStatus("INACTIVE");
+        customerRepository.save(customer);
     }
 }

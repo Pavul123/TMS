@@ -65,4 +65,11 @@ public class VehicleService {
         vehicle.setStatus(status);
         return vehicleRepository.save(vehicle);
     }
+
+    @Transactional
+    public void deleteVehicle(String registration) {
+        Vehicle vehicle = getVehicleByRegistration(registration);
+        vehicle.setStatus("INACTIVE");
+        vehicleRepository.save(vehicle);
+    }
 }

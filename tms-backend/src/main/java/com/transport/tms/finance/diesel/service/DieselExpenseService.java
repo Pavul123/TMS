@@ -106,6 +106,11 @@ public class DieselExpenseService {
     }
 
     @Transactional
+    public void deleteDieselLog(String id) {
+        dieselRepository.deleteById(id);
+    }
+
+    @Transactional
     public VehicleExpense recordExpense(VehicleExpense request, UserPrincipal currentUser) {
         Vehicle vehicle = vehicleService.getVehicleByRegistration(request.getVehicleRegistration());
 
@@ -145,5 +150,10 @@ public class DieselExpenseService {
     @Transactional(readOnly = true)
     public List<VehicleExpense> getAllExpenses() {
         return expenseRepository.findAllByOrderByDateDesc();
+    }
+
+    @Transactional
+    public void deleteExpense(String id) {
+        expenseRepository.deleteById(id);
     }
 }

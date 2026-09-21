@@ -71,6 +71,11 @@ public class ApprovalService {
     }
 
     @Transactional(readOnly = true)
+    public List<CorrectionRequest> getAllApprovals() {
+        return correctionRepository.findAll();
+    }
+
+    @Transactional(readOnly = true)
     public List<CorrectionRequest> getPendingApprovals() {
         return correctionRepository.findByStatusOrderByRequestedAtDesc("PENDING");
     }

@@ -166,6 +166,85 @@ public class TripService {
         return saved;
     }
 
+    @Transactional
+    public Object updateTrip(String id, TripDto.CreateTripRequest request, UserPrincipal currentUser) {
+        Trip trip = tripRepository.findById(id)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Trip", "id", id));
+
+        if (trip.getInvoiceId() != null && !trip.getInvoiceId().isBlank()) {
+            throw new Exceptions.BadRequestException("Cannot edit trip " + id + " because it is already billed under invoice " + trip.getInvoiceId());
+        }
+
+        if (request.getCustomerId() != null && !request.getCustomerId().isBlank()) {
+            Customer customer = customerService.getCustomerById(request.getCustomerId());
+            trip.setCustomerId(customer.getId());
+            trip.setCustomerName(customer.getName());
+            trip.setCustomerPhone(customer.getPhone());
+        }
+
+        if (request.getVehicleRegistration() != null && !request.getVehicleRegistration().isBlank()) {
+            Vehicle vehicle = vehicleService.getVehicleByRegistration(request.getVehicleRegistration());
+            trip.setVehicleRegistration(vehicle.getRegistration());
+            trip.setVehicleOwnership(vehicle.getOwnership());
+        }
+
+        if (request.getDriverId() != null && !request.getDriverId().isBlank()) {
+            Driver driver = driverService.getDriverById(request.getDriverId());
+            trip.setDriverId(driver.getId());
+            trip.setDriverName(driver.getName());
+            trip.setDriverPhone(driver.getPhone());
+        }
+
+        if (request.getDate() != null) trip.setDate(request.getDate());
+        if (request.getMaterial() != null) trip.setMaterial(request.getMaterial());
+        if (request.getQuantity() != null) trip.setQuantity(request.getQuantity());
+        if (request.getUnit() != null) trip.setUnit(request.getUnit());
+        if (request.getSource() != null) trip.setSource(request.getSource());
+        if (request.getSourceBillNo() != null) trip.setSourceBillNo(request.getSourceBillNo());
+        if (request.getLoadingLocation() != null) trip.setLoadingLocation(request.getLoadingLocation());
+        if (request.getDeliveryLocation() != null) trip.setDeliveryLocation(request.getDeliveryLocation());
+        if (request.getNotes() != null) trip.setNotes(request.getNotes());
+        if (request.getOpeningKm() != null) trip.setOpeningKm(request.getOpeningKm());
+        if (request.getClosingKm() != null) trip.setClosingKm(request.getClosingKm());
+        if (request.getTripKm() != null) trip.setTripKm(request.getTripKm());
+
+        boolean isNoLoad = Boolean.TRUE.equals(request.getIsNoLoad());
+        trip.setIsNoLoad(isNoLoad);
+        trip.setNoLoadReason(request.getNoLoadReason());
+
+        if (!isNoLoad) {
+            BigDecimal appliedRate = rateCardService.resolveRate(
+                    trip.getCustomerId(),
+                    trip.getMaterial(),
+                    trip.getLoadingLocation(),
+                    trip.getDeliveryLocation()
+            );
+            trip.setAppliedRate(appliedRate);
+            if (trip.getQuantity() != null) {
+                trip.setTotalAmount(trip.getQuantity().multiply(appliedRate));
+            }
+        } else {
+            trip.setAppliedRate(BigDecimal.ZERO);
+            trip.setTotalAmount(BigDecimal.ZERO);
+        }
+
+        Trip saved = tripRepository.save(trip);
+        if ("WORKER".equalsIgnoreCase(currentUser.getRoleName())) {
+            return mapToWorkerDto(saved);
+        }
+        return mapToFullDto(saved);
+    }
+
+    @Transactional
+    public void deleteTrip(String id) {
+        Trip trip = tripRepository.findById(id)
+                .orElseThrow(() -> new Exceptions.ResourceNotFoundException("Trip", "id", id));
+        if (trip.getInvoiceId() != null && !trip.getInvoiceId().isBlank()) {
+            throw new Exceptions.BadRequestException("Cannot delete trip " + id + " because it is already billed under invoice " + trip.getInvoiceId());
+        }
+        tripRepository.delete(trip);
+    }
+
     public TripDto.FullTripDto mapToFullDto(Trip trip) {
         return TripDto.FullTripDto.builder()
                 .id(trip.getId())

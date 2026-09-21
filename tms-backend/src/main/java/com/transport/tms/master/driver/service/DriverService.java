@@ -50,4 +50,11 @@ public class DriverService {
         driver.setStatus(request.getStatus());
         return driverRepository.save(driver);
     }
+
+    @Transactional
+    public void deleteDriver(String id) {
+        Driver driver = getDriverById(id);
+        driver.setStatus("INACTIVE");
+        driverRepository.save(driver);
+    }
 }

@@ -32,6 +32,38 @@ public class CashBankController {
         return ResponseEntity.ok(ApiResponse.ok(cashBankService.getAllAccounts()));
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'ROLE_MD')")
+    @Operation(summary = "Get account by ID")
+    public ResponseEntity<ApiResponse<CashBankAccount>> getAccountById(@PathVariable String id) {
+        return ResponseEntity.ok(ApiResponse.ok(cashBankService.getAccountById(id)));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'CASHBANK_MANAGE')")
+    @Operation(summary = "Create a new Cash / Bank Account")
+    public ResponseEntity<ApiResponse<CashBankAccount>> createAccount(
+            @RequestBody CashBankAccount account) {
+        return ResponseEntity.ok(ApiResponse.ok("Account created successfully", cashBankService.createAccount(account)));
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'CASHBANK_MANAGE')")
+    @Operation(summary = "Update Cash / Bank Account details")
+    public ResponseEntity<ApiResponse<CashBankAccount>> updateAccount(
+            @PathVariable String id,
+            @RequestBody CashBankAccount account) {
+        return ResponseEntity.ok(ApiResponse.ok("Account updated successfully", cashBankService.updateAccount(id, account)));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS')")
+    @Operation(summary = "Deactivate Cash / Bank Account")
+    public ResponseEntity<ApiResponse<Void>> deleteAccount(@PathVariable String id) {
+        cashBankService.deleteAccount(id);
+        return ResponseEntity.ok(ApiResponse.ok("Account deactivated successfully", null));
+    }
+
     @GetMapping("/transfers")
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'ROLE_MD')")
     @Operation(summary = "Get all Contra transfer histories")
@@ -39,7 +71,7 @@ public class CashBankController {
         return ResponseEntity.ok(ApiResponse.ok(cashBankService.getAllTransfers()));
     }
 
-    @PostMapping("/transfer")
+    @PostMapping({"/transfer", "/contra-transfer"})
     @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_ACCOUNTS', 'CASHBANK_MANAGE')")
     @Operation(summary = "Execute internal Contra transfer (e.g. Cash in Hand -> Corporate Bank)")
     public ResponseEntity<ApiResponse<ContraTransfer>> executeContraTransfer(

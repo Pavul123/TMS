@@ -31,19 +31,33 @@ public class RateCardController {
         return ResponseEntity.ok(ApiResponse.ok(rateCardService.getAllRates()));
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Get rate card by ID")
+    public ResponseEntity<ApiResponse<ConfiguredRate>> getRateById(@PathVariable String id) {
+        return ResponseEntity.ok(ApiResponse.ok(rateCardService.getRateById(id)));
+    }
+
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'RATE_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'RATE_MANAGE')")
     @Operation(summary = "Create rate card")
     public ResponseEntity<ApiResponse<ConfiguredRate>> createRate(@Valid @RequestBody ConfiguredRate rate) {
         return ResponseEntity.ok(ApiResponse.ok("Rate card created", rateCardService.createRate(rate)));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'RATE_MANAGE')")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'RATE_MANAGE')")
     @Operation(summary = "Update rate card")
     public ResponseEntity<ApiResponse<ConfiguredRate>> updateRate(
             @PathVariable String id,
             @Valid @RequestBody ConfiguredRate rate) {
         return ResponseEntity.ok(ApiResponse.ok("Rate card updated", rateCardService.updateRate(id, rate)));
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ACCOUNTS', 'RATE_MANAGE')")
+    @Operation(summary = "Delete rate card")
+    public ResponseEntity<ApiResponse<Void>> deleteRate(@PathVariable String id) {
+        rateCardService.deleteRate(id);
+        return ResponseEntity.ok(ApiResponse.ok("Rate card deleted successfully", null));
     }
 }
